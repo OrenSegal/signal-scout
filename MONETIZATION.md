@@ -280,3 +280,14 @@ about wanting one).
 4. Keep an eye on the Section 8 competitive watch list roughly quarterly —
    this space is moving fast enough that a 2026-07 snapshot won't hold
    through 2027 unexamined.
+
+## 11. Related, but deliberately separate: `../backshift/`
+
+`backshift/SPEC.md` records a different idea — a high-touch, per-client
+managed-AI-employee *service* business, as opposed to signal-scout's
+self-serve *product*. It's a spec only, not built, and not part of
+signal-scout's roadmap. The only intended connections: it would use
+signal-scout + `signal-outreach` to find its own first clients (dogfooding),
+and its reliability-engineering notes are a reference for signal-scout's own
+Phase 2 hosted watch mode, once that's actually being built. Don't let it
+absorb roadmap attention beyond that until there's a concrete reason to.
