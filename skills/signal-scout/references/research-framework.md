@@ -32,6 +32,8 @@ This context sharpens every query and helps identify high-intent switchers.
 
 ### Query buckets
 
+Check [query-packs/](query-packs/README.md) first for a pack tuned to this product's vertical — start there instead of the generic buckets below when one matches, then still cover any gaps with the generic list.
+
 Search several buckets rather than repeating one query:
 
 1. **Explicit demand:** "looking for," "recommend a tool," "alternative to," "does anything exist."
@@ -81,6 +83,8 @@ Not all signals are equal by age:
 - **Old (180+ days):** Timing = 1 max. Include only if the pain is结构性 (structural) rather than event-driven.
 
 Always note the signal date in the prospect record.
+
+This decay schedule is a fixed heuristic applied uniformly across signal types. If `scripts/recalibrate.py` (run against a product's logged outcomes — see SKILL.md step 8) shows a signal type consistently over- or under-performing this schedule, that's evidence to adjust it for that type — don't tune it speculatively without outcome data behind it.
 
 ## Classifying prospect type
 

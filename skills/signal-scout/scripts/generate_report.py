@@ -281,6 +281,40 @@ def render_best_card(kind: str, item: dict[str, Any]) -> str:
     </div>"""
 
 
+def render_exec_summary(
+    data: dict[str, Any],
+    all_prospects: list[dict[str, Any]],
+    counts: dict[str, int],
+    high_intent: int,
+    average: int,
+) -> str:
+    bullets: list[str] = []
+
+    top = max(all_prospects, key=lambda x: clamp(x.get("score")), default=None)
+    if top:
+        headline = top.get("why_now") or top.get("pain_signal") or ""
+        bullets.append(
+            f"Strongest signal: <b>{esc(top.get('name', 'Unnamed'))}</b> "
+            f"({clamp(top.get('score'))}/100) — {esc(headline)}"
+        )
+
+    parts = [f"{count} {label}" for label, count in counts.items() if count]
+    if parts:
+        bullets.append(
+            f"{', '.join(parts)} qualified · {high_intent} high-intent · average fit {average}/100"
+        )
+
+    limits = items(data.get("limits"))
+    if limits:
+        bullets.append(f"Biggest caveat: {esc(limits[0])}")
+
+    if not bullets:
+        return ""
+
+    rows = "".join(f"<li>{b}</li>" for b in bullets)
+    return f'<ul class="exec-summary">{rows}</ul>'
+
+
 def render_pattern(pattern: dict[str, Any], index: int) -> str:
     return f"""
     <article class="pattern reveal">
@@ -337,11 +371,11 @@ def render_research_audit(data: dict[str, Any]) -> str:
         </div>
         <div class="audit-card">
           <span>Queries issued ({len(queries)})</span>
-          <ul>{query_list or '<li>Not logged</li>'}</ul>
+          <details><summary>Show queries</summary><ul>{query_list or '<li>Not logged</li>'}</ul></details>
         </div>
         <div class="audit-card">
           <span>Sources consulted ({len(sources)})</span>
-          <ul>{source_list or '<li>Not logged</li>'}</ul>
+          <details><summary>Show sources</summary><ul>{source_list or '<li>Not logged</li>'}</ul></details>
         </div>
       </div>
     </section>"""
@@ -385,6 +419,14 @@ def build_html(data: dict[str, Any]) -> str:
     limits = items(data.get("limits"))
     completeness = completeness_score(data, len(all_prospects))
     comp_ctx = data.get("competitive_context") if isinstance(data.get("competitive_context"), dict) else {}
+
+    exec_summary_html = render_exec_summary(
+        data,
+        all_prospects,
+        {"individuals": len(individuals), "segments": len(segments), "companies": len(companies)},
+        high_intent,
+        average,
+    )
 
     individuals_html = render_type_section("individual", individuals)
     segments_html = render_type_section("segment", segments)
@@ -491,6 +533,10 @@ def build_html(data: dict[str, Any]) -> str:
     .eyebrow {{ color: var(--acid); font: 750 11px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .11em; }}
     h1 {{ font-size: clamp(48px, 7vw, 92px); line-height: .92; letter-spacing: -.065em; margin: 13px 0 24px; }}
     .verdict {{ font-size: clamp(18px, 2.1vw, 25px); color: #dce1e9; max-width: 820px; margin: 0; }}
+    .exec-summary {{ list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 8px; max-width: 820px; }}
+    .exec-summary li {{ font-size: 14px; color: var(--muted); padding-left: 20px; position: relative; }}
+    .exec-summary li::before {{ content: "→"; position: absolute; left: 0; color: var(--acid); }}
+    .exec-summary b {{ color: var(--ink); }}
     .hero-card {{ background: var(--acid); color: #10120d; padding: 26px; border-radius: var(--radius); box-shadow: var(--shadow); transform: rotate(1deg); }}
     .hero-card span {{ font: 800 11px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }}
     .hero-card strong {{ display: block; font-size: 64px; line-height: 1; letter-spacing: -.08em; margin: 15px 0 6px; }}
@@ -656,6 +702,7 @@ def build_html(data: dict[str, Any]) -> str:
           <span class="eyebrow">Early-customer report · {esc(data.get('generated_at', ''))}</span>
           <h1>{esc(data.get('title', 'Signal Scout'))}</h1>
           <p class="verdict">{esc(data.get('verdict', 'No verdict supplied.'))}</p>
+          {exec_summary_html}
         </div>
         <aside class="hero-card">
           <span>Qualified prospects</span>

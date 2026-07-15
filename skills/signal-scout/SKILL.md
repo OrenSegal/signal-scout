@@ -6,6 +6,8 @@ Turn a startup URL or product description into a short, evidence-backed map of w
 
 Read [references/research-framework.md](references/research-framework.md) before researching or scoring. Read [references/report-artifact.md](references/report-artifact.md) before creating the final report.
 
+After delivering a report, check [references/roadmap.md](references/roadmap.md) for standing follow-up ideas (feedback loop, watch mode, vertical query packs, etc.) and surface any that fit this run as an optional next step — propose them, don't build them without explicit user approval.
+
 ## Research Tools
 
 This skill uses the following Claude Code / OpenCode tools:
@@ -199,6 +201,10 @@ If `suggested_channel` is "No public reply/DM channel exists," omit `opener` and
 
 ### 2. Build a public-signal search plan
 
+Before writing generic queries, check [references/query-packs/](references/query-packs/README.md) for a pack matching the product's vertical (devtools, health/wellness, marketplace/SaaS) and start from its tuned buckets and source mix instead of the generic list below. Still cover anything a pack doesn't address using the generic buckets.
+
+If `outcomes.jsonl` exists from a prior run on this product (see step 7), run `python3 <skill_dir>/scripts/recalibrate.py outcomes.jsonl` first and weight this run's queries toward the source types and buckets it flags as outperforming.
+
 Search current public sources for:
 
 - Explicit tool or alternative requests
@@ -267,13 +273,32 @@ Create a standalone HTML report unless the user explicitly requests chat-only ou
 
 1. Write structured JSON following the schema above and in [references/report-artifact.md](references/report-artifact.md).
 2. Save the JSON to a temp file: `analysis.json` in the workspace.
-3. Run `python3 <skill_dir>/scripts/generate_report.py analysis.json outputs/signal-scout-report.html` (use the absolute path to the skill's scripts directory).
-4. Verify every section rendered, source links resolve, scores and dimensions match the type they belong to, and no card shows an empty/"N/A" field.
-5. Return a clickable absolute file link in the final response.
+3. Run `python3 <skill_dir>/scripts/verify_sources.py analysis.json` and review the output. It fetches every `source_url` and fuzzy-matches the cited `evidence` against the live page — this catches dead links and evidence paraphrased from a search snippet that self-graded `evidence_quality` scores miss. For any `UNREACHABLE`/`INVALID_URL` result, drop the prospect or find a working source before continuing. For `LOW_MATCH`, re-read the source and either tighten the `evidence` quote or note the mismatch in `limits` — a low match isn't always wrong (paraphrase, page redesign), but it must not pass silently.
+4. Run `python3 <skill_dir>/scripts/generate_report.py analysis.json outputs/signal-scout-report.html` (use the absolute path to the skill's scripts directory).
+5. Verify every section rendered, source links resolve, scores and dimensions match the type they belong to, and no card shows an empty/"N/A" field.
+6. Return a clickable absolute file link in the final response.
 
 **Error recovery:** If the report script fails, read the error message, fix the JSON (most common issue: missing required fields, invalid URLs, or a prospect in the wrong type array), and retry once. If it fails again, output the JSON directly and note the script issue.
 
 **Caching:** If the product URL was already analyzed in this session and the user asks for a refresh, re-run only the search phase. If they ask for the same product, reuse cached research and re-score only if new signals appeared.
+
+**Storage convention (enables steps 7-8 below):** save each run's JSON at `outputs/<product-slug>/analysis-<YYYY-MM-DD>.json` (slug the product name, e.g. `outputs/acme-crm/analysis-2026-07-14.json`) instead of a single throwaway `analysis.json`, whenever the user is likely to revisit this product. This is what makes `diff_reports.py` and `recalibrate.py` useful later — a one-off `analysis.json` in a temp dir works fine for a single-shot ask, but don't use it for a product the user is actively working.
+
+### 7. Watch mode (offer, don't assume)
+
+If the user is actively working a product rather than doing a one-off check, offer to schedule a recurring re-run via the `schedule` skill (e.g. weekly). Each scheduled run should: re-run only the search phase (per the caching rule above) against the same product, save the new snapshot per the storage convention, then run `python3 <skill_dir>/scripts/diff_reports.py outputs/<slug>/analysis-<previous-date>.json outputs/<slug>/analysis-<current-date>.json` and report only the new prospects, dropped prospects, and growing patterns it prints — not the full report again. This needs explicit user opt-in since it creates a standing scheduled job.
+
+### 8. Close the loop with outcomes (when available)
+
+signal-scout's scores are self-graded — there is no ground truth until someone acts on a prospect. If the user later reports what happened after outreach (via [signal-outreach](https://github.com/OrenSegal/first-to-first-sale) or directly), log it:
+
+```bash
+python3 <skill_dir>/scripts/log_outcome.py outputs/<slug>/outcomes.jsonl \
+  --name "<prospect name>" --type individual --source-type "Forum" \
+  --query-bucket pain --score 82 --outcome replied --date <YYYY-MM-DD>
+```
+
+`--outcome` is one of `replied`, `no_reply`, `converted`, `not_pursued`. Do this opportunistically, not by asking the user to fill out a form — if they mention a reply or a conversion in passing, log it. On the *next* research run for the same product, step 2 already checks for this file and runs `recalibrate.py` automatically.
 
 ## Modes
 
@@ -312,6 +337,7 @@ Before delivering, verify every item:
 - [ ] Research audit logs queries and sources.
 - [ ] Limits array discloses all assumptions, missing evidence, and classification calls.
 - [ ] Report was generated and the file link works.
+- [ ] `scripts/verify_sources.py` was run and every `UNREACHABLE`/`INVALID_URL` result was resolved (prospect dropped or source fixed) before the final report.
 
 ## Quality bar
 
