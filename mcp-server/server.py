@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""signal-scout MCP server — sells the research skill directly to other
-agents (B2A), not just to a human running Claude Code.
+"""signal-scout MCP server — makes the research skill callable by other
+agents (B2A distribution), not just usable by a human running Claude Code.
+Free and self-hostable, on purpose — see ../MONETIZATION.md Section 7 for
+why this stays a distribution channel into a paid hosted layer rather than
+a metered product in its own right.
 
 Two tools, deliberately split by what actually adds value on top of what a
 capable calling agent (Claude Code included) already has for free:

@@ -6,10 +6,16 @@ workflow orchestrator — can call it and get back a scored, verified report,
 machine-to-machine.
 
 This is a v0 scaffold: the research loop, classification, source
-verification, and report generation are real and tested (see below), but
-**no payment provider is wired in yet**. Every call is metered locally to
-`usage.jsonl` so you can see real per-call cost before choosing a billing
-rail. See [`../MONETIZATION.md`](../MONETIZATION.md) for the plan.
+verification, and report generation are real and tested (see below).
+
+**This code is free and self-hostable, permanently — that's deliberate, not
+a placeholder.** Per `../MONETIZATION.md`, restricting access to a Python
+script and some prompts doesn't create real defensibility, it just throws
+away distribution. The actual paid product (if/when built) is a *hosted*
+version of this — no self-managed `ANTHROPIC_API_KEY`/infra, a higher daily
+call limit, and the cross-user recalibration engine that only exists once
+many people's usage accumulates in one place. Every call is metered locally
+to `usage.jsonl` regardless, so real per-call cost is visible either way.
 
 ## Two tools, split by what actually adds value
 
@@ -79,18 +85,20 @@ this for anything paid.** If the schema needs adjusting (e.g. a field the
 model can't populate under strict mode), `schema.py` is the only file that
 should need edits.
 
-## What's still missing before this can charge money
+## What's still missing before this reaches other people's agents
 
-- **A payment gate.** `usage_meter.py` estimates cost per call but doesn't
-  block or charge for anything. Wiring in x402 (crypto micropayments) or
-  Stripe's Machine Payments Protocol (session-based fiat billing) is a
-  deliberate choice — see `../MONETIZATION.md` for the tradeoff — and needs
-  your own provider account, not something buildable from this sandbox.
+- **Not a payment gate — per `../MONETIZATION.md`, don't build one.** As of
+  mid-2026, nobody in this specific niche (B2B sales-intelligence MCP
+  servers) charges per call — Apollo, Clay, Warmly, and Brand24 all bundle
+  MCP access free into their existing subscription. Building x402/Stripe MPP
+  billing now would be payment infrastructure for demand that doesn't exist
+  yet in this category. Revisit only if that changes.
 - **Hosting.** This runs over stdio locally. To be callable by *other
   people's* agents (not just your own), it needs to run somewhere reachable
-  — a small always-on host, or Anthropic's Managed Agents / MCP hosting
-  (Apify and similar marketplaces also host MCP servers with built-in
-  metering — see `../MONETIZATION.md` for the comparison).
+  — a small always-on host, or Anthropic's Managed Agents / MCP hosting.
+  `SIGNAL_SCOUT_DAILY_CALL_CAP` is the gate for a hosted instance (raise it
+  for paying subscribers), not a per-call charge.
 - **A public listing.** An MCP server nobody can find gets no B2A traffic.
   Once hosted, list it in an MCP registry / marketplace so other agents can
-  discover it.
+  discover it — but treat this as distribution for the same paid core
+  product (Section 7 of `../MONETIZATION.md`), not a separate revenue line.
