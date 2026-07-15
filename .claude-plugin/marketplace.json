@@ -1,0 +1,17 @@
+{
+  "name": "signal-scout",
+  "owner": {
+    "name": "Oren Segal"
+  },
+  "description": "Marketplace for the signal-scout Claude Code plugin — evidence-backed customer, segment, and company discovery from public signals.",
+  "plugins": [
+    {
+      "name": "signal-scout",
+      "source": "./",
+      "description": "Turns a startup URL or product description into an evidence-backed shortlist of first customers, market segments, and companies worth pitching.",
+      "version": "1.0.0",
+      "license": "MIT",
+      "keywords": ["sales", "gtm", "prospecting", "customer-discovery", "outreach"]
+    }
+  ]
+}

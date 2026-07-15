@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Shelfie</title>
+  <style>
+    :root {
+      --bg: #090b0f;
+      --panel: #12161d;
+      --panel2: #191f28;
+      --ink: #f5f2ea;
+      --muted: #9ca6b5;
+      --line: #2b3340;
+      --acid: #d9ff63;
+      --blue: #69b7ff;
+      --orange: #ff8f5a;
+      --cyan: #5ee8d0;
+      --red: #ff6b6b;
+      --radius: 18px;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .38);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .3;
+      background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 12px);
+      mask-image: linear-gradient(#000, transparent 82%);
+    }
+    a { color: inherit; }
+    ul { margin: 0; padding-left: 1.2em; }
+    li { margin: 2px 0; }
+
+    .skip { position: absolute; left: -9999px; }
+    .skip:focus { left: 16px; top: 16px; z-index: 9; background: var(--acid); color: #111; padding: 10px; border-radius: 8px; }
+    button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+    .shell { width: min(1180px, calc(100% - 40px)); margin: auto; position: relative; }
+
+    .top { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; border-bottom: 1px solid var(--line); }
+    .brand { font-weight: 850; display: flex; align-items: center; gap: 10px; }
+    .brand i { width: 12px; height: 12px; border-radius: 50%; background: var(--acid); box-shadow: 0 0 22px var(--acid); }
+    .meta { display: flex; gap: 8px; align-items: center; }
+    .chip, .badge {
+      border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; color: var(--muted);
+      font: 750 11px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .07em; display: inline-block;
+    }
+    .badge.competitor { border-color: rgba(255, 107, 107, .5); color: var(--red); }
+    .completeness-badge {
+      background: var(--acid); color: #111; padding: 7px 12px; border-radius: 999px;
+      font: 800 12px ui-monospace, monospace; display: flex; align-items: center; gap: 6px;
+    }
+    .completeness-badge i { width: 8px; height: 8px; border-radius: 50%; background: #111; }
+    button { background: var(--ink); color: #111; border: 0; border-radius: 999px; padding: 9px 14px; font: 800 13px inherit; cursor: pointer; }
+
+    .hero { display: grid; grid-template-columns: 1.45fr .55fr; gap: 36px; align-items: end; padding: 72px 0 42px; }
+    .eyebrow { color: var(--acid); font: 750 11px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .11em; }
+    h1 { font-size: clamp(48px, 7vw, 92px); line-height: .92; letter-spacing: -.065em; margin: 13px 0 24px; }
+    .verdict { font-size: clamp(18px, 2.1vw, 25px); color: #dce1e9; max-width: 820px; margin: 0; }
+    .hero-card { background: var(--acid); color: #10120d; padding: 26px; border-radius: var(--radius); box-shadow: var(--shadow); transform: rotate(1deg); }
+    .hero-card span { font: 800 11px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+    .hero-card strong { display: block; font-size: 64px; line-height: 1; letter-spacing: -.08em; margin: 15px 0 6px; }
+    .hero-card p { margin: 0; font-weight: 700; font-size: 13px; }
+
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-bottom: 28px; }
+    .stats > div { padding: 18px; background: var(--panel); }
+    .stats > div + div { border-left: 1px solid var(--line); }
+    .stats span, .info-grid span, .signal span, .evidence span, blockquote span,
+    .audit-card span, .comp-card span, .follow-ups span, .keywords span, .proof-points span {
+      display: block; color: var(--muted); font: 700 10px ui-monospace, monospace;
+      text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px;
+    }
+    .stats strong { font-size: 17px; }
+
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .filter-bar button { background: var(--panel); color: var(--muted); border: 1px solid var(--line); padding: 7px 14px; font: 700 12px inherit; transition: all .15s; }
+    .filter-bar button:hover { border-color: var(--acid); color: var(--ink); }
+    .filter-bar button.active { background: var(--acid); color: #111; border-color: var(--acid); }
+    .filter-bar input { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; font: 700 12px inherit; width: 200px; }
+    .filter-bar input::placeholder { color: var(--muted); }
+
+    .best-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 72px; }
+    .best-card { padding: 24px; border-radius: var(--radius); box-shadow: var(--shadow); color: #111; }
+    .best-card.acc-acid { background: var(--acid); }
+    .best-card.acc-blue { background: var(--blue); }
+    .best-card.acc-orange { background: var(--orange); }
+    .best-label { font: 800 11px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .1em; }
+    .best-card h3 { font-size: clamp(22px, 3vw, 32px); letter-spacing: -.03em; line-height: 1.05; margin: 8px 0; }
+    .best-card p { margin: 0 0 10px; font-size: 13px; }
+    .best-card strong { font-size: 34px; }
+
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+    .section-head h2 { font-size: clamp(34px, 5vw, 62px); line-height: .98; letter-spacing: -.055em; margin: 0; }
+    .section-head p { color: var(--muted); max-width: 470px; margin: 0; }
+
+    .cards { display: grid; gap: 16px; margin-bottom: 76px; }
+    .card { background: linear-gradient(135deg, var(--panel), #0f1319); border: 1px solid var(--line); border-radius: var(--radius); padding: 25px; box-shadow: 0 12px 38px rgba(0, 0, 0, .18); }
+    .card.hidden { display: none; }
+    .card-head { display: grid; grid-template-columns: 54px 1fr 92px; gap: 17px; align-items: start; }
+    .rank { font: 850 24px ui-monospace, monospace; color: var(--acid); padding-top: 8px; }
+    .identity h3 { font-size: 29px; letter-spacing: -.04em; margin: 6px 0 10px; }
+    .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+    .stage { display: inline-block; }
+    .stage.hot { color: var(--orange); border-color: rgba(255, 143, 90, .5); }
+    .stage.warm { color: var(--cyan); border-color: rgba(94, 232, 208, .45); }
+    .score {
+      --score: 0; width: 88px; height: 88px; border-radius: 50%; display: grid; place-content: center; text-align: center;
+      background: radial-gradient(circle, var(--panel) 58%, transparent 60%), conic-gradient(var(--acid) calc(var(--score) * 1%), var(--line) 0);
+    }
+    .score strong { font-size: 26px; line-height: 1; }
+    .score small { color: var(--muted); }
+    .signal { margin: 21px 0 12px; padding: 16px; background: var(--panel2); border-left: 4px solid var(--acid); }
+    .card-segment .signal { border-left-color: var(--blue); }
+    .card-company .signal { border-left-color: var(--orange); }
+    .signal p { font-size: 17px; margin: 0; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .info-grid > div, .evidence > div, .comp-card { border: 1px solid var(--line); border-radius: 12px; padding: 15px; background: rgba(255, 255, 255, .018); }
+    .info-grid p { margin: 0; }
+    .info-grid ul { margin: 0; padding-left: 1.1em; }
+    blockquote { margin: 12px 0 0; padding: 16px; border: 1px dashed rgba(217, 255, 99, .55); border-radius: 12px; color: #eaf6c6; }
+    blockquote.no-channel { border-color: rgba(156, 166, 181, .4); color: var(--muted); }
+    blockquote.content-angle { border-color: rgba(105, 183, 255, .55); color: #dbeaff; }
+    .card-company blockquote { border-color: rgba(255, 143, 90, .55); color: #ffe6d8; }
+    details { margin-top: 10px; }
+    summary { cursor: pointer; color: var(--acid); font-weight: 800; padding: 10px 0; }
+    .evidence { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .evidence a { display: inline-block; color: var(--blue); margin-top: 8px; word-break: break-word; }
+    .evidence p { margin: 0; }
+    .metrics { display: grid; gap: 8px; margin-top: 14px; }
+    .metric { display: grid; grid-template-columns: 145px 1fr 40px; gap: 12px; align-items: center; font-size: 13px; }
+    .track { height: 8px; background: var(--line); border-radius: 8px; overflow: hidden; }
+    .track i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--acid)); border-radius: 8px; }
+    .follow-ups, .keywords, .proof-points { margin-top: 14px; padding: 16px; background: var(--panel2); border-radius: 12px; }
+    .follow-ups ul, .proof-points ul { list-style: none; padding: 0; }
+    .follow-ups li, .proof-points li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .follow-ups li:last-child, .proof-points li:last-child { border-bottom: 0; }
+    .follow-ups li span { font: 700 10px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 4px; display: block; }
+    .follow-ups li p { margin: 0; font-size: 14px; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip-row .chip { color: var(--ink); border-color: var(--line); }
+
+    .patterns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 76px; }
+    .pattern { display: grid; grid-template-columns: 42px 1fr auto; gap: 15px; align-items: start; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+    .pattern-num { color: var(--acid); font: 800 13px ui-monospace, monospace; }
+    .pattern h3 { margin: 0 0 5px; }
+    .pattern p { margin: 0; color: var(--muted); }
+    .pattern > strong { font-size: 30px; color: var(--acid); }
+
+    .competitive { margin-bottom: 76px; }
+    .comp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .comp-card span { margin-bottom: 8px; }
+    .comp-card p { margin: 0; }
+    .comp-card ul { margin: 0; padding-left: 1.2em; }
+
+    .plan { display: grid; grid-template-columns: .8fr 1.2fr; gap: 28px; background: var(--acid); color: #111; padding: 29px; border-radius: var(--radius); margin-bottom: 30px; }
+    .plan h2 { font-size: 38px; line-height: 1; letter-spacing: -.045em; margin: 10px 0; }
+    .plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .plan-grid > div { border: 1px solid rgba(0, 0, 0, .24); border-radius: 11px; padding: 13px; }
+    .plan-grid span { display: block; font: 750 10px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; }
+    .plan-grid p { margin: 0; }
+    .plan-grid ul { margin: 0; padding-left: 1.2em; }
+
+    .audit { margin-bottom: 76px; }
+    .audit-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .audit-card { border: 1px solid var(--line); border-radius: 14px; padding: 20px; background: var(--panel); }
+    .audit-card ul { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; }
+    .audit-card li { font-size: 13px; padding: 3px 0; color: var(--muted); word-break: break-all; }
+    .audit-card code { font-size: 12px; color: var(--cyan); }
+
+    .limits { border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; color: var(--muted); margin-bottom: 60px; }
+    .limits h2 { color: var(--ink); margin-top: 0; }
+
+    footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--line); padding: 22px 0 40px; color: var(--muted); font-size: 12px; }
+
+    .reveal { animation: rise .4s ease both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+
+    @media (max-width: 820px) {
+      .shell { width: min(100% - 24px, 1180px); }
+      .hero, .plan { grid-template-columns: 1fr; }
+      .hero { padding-top: 44px; }
+      .hero-card { transform: none; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .stats > div + div { border-left: 0; border-top: 1px solid var(--line); }
+      .card-head { grid-template-columns: 38px 1fr; }
+      .score { grid-column: 1 / -1; }
+      .info-grid, .evidence, .patterns, .plan-grid, .comp-grid, .audit-grid { grid-template-columns: 1fr; }
+      .meta .chip { display: none; }
+      .filter-bar input { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+
+    @media print {
+      body { background: #fff; color: #111; }
+      body::before, .top button, .filter-bar { display: none; }
+      .shell { width: 100%; }
+      .card, .pattern, .limits, .audit-card, .comp-card { background: #fff; color: #111; break-inside: avoid; }
+      .info-grid span, .signal span, .evidence span, blockquote span, .stats span,
+      .audit-card span, .comp-card span, .follow-ups span { color: #444; }
+      .card.hidden { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to report</a>
+  <div class="shell">
+    <header class="top">
+      <div class="brand"><i></i> Signal Scout</div>
+      <div class="meta">
+        <span class="chip">Public signals only</span>
+        <span class="completeness-badge"><i></i> Completeness 90%</span>
+        <button type="button" onclick="window.print()">Print / Save PDF</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <div>
+          <span class="eyebrow">Early-customer report · 2026-07-14</span>
+          <h1>Shelfie</h1>
+          <p class="verdict">Strong early-demand signals across all three prospect types: individuals actively requesting a tool, a repeated pantry-forgetting pattern worth targeting with content, and one company whose hiring signal points to a design-partner opportunity.</p>
+        </div>
+        <aside class="hero-card">
+          <span>Qualified prospects</span>
+          <strong>5</strong>
+          <p>Potential customers, markets, and partners based on public signals.</p>
+        </aside>
+      </section>
+
+      <section class="stats">
+        <div><span>Product</span><strong><a href="https://shelfie.app" target="_blank" rel="noreferrer">AI-powered kitchen intelligence that scans your pantry, predicts waste, and suggests recipes from what you already have.</a></strong></div>
+        <div><span>Individuals</span><strong>3</strong></div>
+        <div><span>Segments</span><strong>1</strong></div>
+        <div><span>Companies</span><strong>1</strong></div>
+        <div><span>Completeness</span><strong>90%</strong></div>
+      </section>
+
+      <div class="best-row">
+        
+    <div class="best-card acc-acid">
+      <span class="best-label">Best individual</span>
+      <h3>MealPrepWeekly</h3>
+      <p>The video was posted 11 days ago and the creator is actively responding to comment suggestions.</p>
+      <strong>97</strong>
+    </div>
+    <div class="best-card acc-blue">
+      <span class="best-label">Best segment</span>
+      <h3>Sunday meal-preppers who forget their fridge contents by midweek</h3>
+      <p>The megathread format refreshes monthly and remains active — a durable, recurring channel rather than a one-off signal.</p>
+      <strong>77</strong>
+    </div>
+    <div class="best-card acc-orange">
+      <span class="best-label">Best company</span>
+      <h3>GreenPlate Co</h3>
+      <p>They&#x27;re hiring for this role now, which means budget is approved and the problem is prioritized this quarter.</p>
+      <strong>84</strong>
+    </div>
+      </div>
+
+      <div class="filter-bar" id="filterBar">
+        <button class="active" data-filter="all">All (5)</button>
+        <button data-filter="hot">High intent</button>
+        <button data-filter="warm">Problem aware / trigger</button>
+        <button data-filter="cool">Potential fit</button>
+        <input type="text" id="searchInput" placeholder="Search all prospects...">
+      </div>
+
+      
+      <section>
+        <header class="section-head">
+          <h2>People to message.</h2>
+          <p>Every individual is tied to a public pain, demand, or timing signal with a real reply channel. Open the evidence before considering outreach.</p>
+        </header>
+        <div class="cards">
+          
+    <article class="card card-individual reveal" data-stage="high intent" data-score="97">
+      
+      <header class="card-head">
+        <div class="rank">01</div>
+        <div class="identity">
+          <span class="eyebrow">Individual</span>
+          <h3>MealPrepWeekly</h3>
+          <div class="badges">
+            <span class="stage hot">High intent</span>
+          </div>
+        </div>
+        <div class="score" style="--score:97" aria-label="Fit score 97 out of 100">
+          <strong>97</strong><small>/100</small>
+        </div>
+      </header>
+      <div class="signal"><span>Public signal</span><p>Published a YouTube video titled &#x27;I Keep Throwing Away Groceries&#x27; describing the exact problem of buying ingredients for meal prep but forgetting what&#x27;s in the fridge.</p></div>
+      <div class="info-grid">
+        <div><span>Why it fits</span><p>Shelfie&#x27;s scan-and-track feature directly solves the &#x27;buy but forget&#x27; loop. The creator already uses manual spreadsheets.</p></div>
+        <div><span>Why now</span><p>The video was posted 11 days ago and the creator is actively responding to comment suggestions.</p></div>
+        <div><span>Suggested channel</span><p>Reply to the YouTube comment thread where they ask for app suggestions</p></div>
+        <div><span>Caution</span><p>Confirm they haven&#x27;t already found a solution through the comments. Check the thread before reaching out.</p></div>
+      </div>
+      <blockquote><span>Suggested opener</span>Saw your video on the grocery waste cycle — the spreadsheet-to-trash loop is painfully familiar. We built a tool that scans your pantry with your camera and matches recipes to what&#x27;s actually there. Would a free trial be useful to test against your current system?</blockquote>
+      <div class="follow-ups"><span>Follow-up sequence</span><ul><li><span>Follow-up 1</span><p>Quick follow-up — a few people in your comments mentioned apps that track pantry by manually entering items. Ours does it by photo scan, which might fit your workflow better. Happy to walk you through it in 5 minutes.</p></li><li><span>Follow-up 2</span><p>Found this — a creator with a similar setup switched to camera-based tracking and cut their waste by 60% in a month. Thought you&#x27;d find the comparison interesting: [link]. No pitch, just data.</p></li></ul></div>
+      
+      <details>
+        <summary>Evidence and score breakdown</summary>
+        <div class="evidence">
+          <div><span>Evidence</span><p>A 12-minute video with 45K views where the creator walks through their fridge, shows expired items, and asks followers for app recommendations.</p></div>
+          <div>
+            <span>Source</span>
+            <p>Social post · 2026-07-03</p>
+            <a href="https://www.youtube.com/watch?v=example1" target="_blank" rel="noreferrer">I Keep Throwing Away Groceries — YouTube ↗</a>
+          </div>
+        </div>
+        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Reachability</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div></div>
+      </details>
+    </article>
+    <article class="card card-individual reveal" data-stage="problem aware" data-score="95">
+      
+      <header class="card-head">
+        <div class="rank">02</div>
+        <div class="identity">
+          <span class="eyebrow">Individual</span>
+          <h3>The Frugal Kitchen (Reddit user)</h3>
+          <div class="badges">
+            <span class="stage warm">Problem aware</span>
+          </div>
+        </div>
+        <div class="score" style="--score:95" aria-label="Fit score 95 out of 100">
+          <strong>95</strong><small>/100</small>
+        </div>
+      </header>
+      <div class="signal"><span>Public signal</span><p>Posted a detailed thread on r/EatCheapAndHealthy describing spending $200/week on groceries and throwing away roughly $60 worth. Asked &#x27;is there an app that actually helps with this?&#x27;</p></div>
+      <div class="info-grid">
+        <div><span>Why it fits</span><p>The user is already quantifying the problem and actively seeking a tool. Shelfie&#x27;s waste prediction and recipe matching address both the tracking and the utilization.</p></div>
+        <div><span>Why now</span><p>Posted 9 days ago. Still active in the thread responding to suggestions.</p></div>
+        <div><span>Suggested channel</span><p>Reply in the Reddit thread</p></div>
+        <div><span>Caution</span><p>Reddit users value peer recommendations over brand accounts. Engage genuinely, not commercially.</p></div>
+      </div>
+      <blockquote><span>Suggested opener</span>The $60/week waste number is wild — and unfortunately common. We built Shelfie specifically for this: scan your fridge, get recipes matched to what&#x27;s actually there before it goes bad. It tracks expiry by sight. Would love your take on whether it fits your workflow.</blockquote>
+      <div class="follow-ups"><span>Follow-up sequence</span><ul><li><span>Follow-up 1</span><p>Saw some people in the thread suggesting spreadsheets — those work until you forget to update them. Shelfie updates by camera scan so the data stays current without manual effort. Happy to set you up with a free account.</p></li><li><span>Follow-up 2</span><p>Quick update — we just added a weekly &#x27;use it first&#x27; alert that tells you what to cook before anything expires. Thought that maps to exactly what you described. No strings, just try it.</p></li></ul></div>
+      
+      <details>
+        <summary>Evidence and score breakdown</summary>
+        <div class="evidence">
+          <div><span>Evidence</span><p>The post includes a photo of their fridge with expired items and a breakdown of their monthly waste cost. 47 comments, many suggesting apps.</p></div>
+          <div>
+            <span>Source</span>
+            <p>Forum · 2026-07-05</p>
+            <a href="https://reddit.com/r/EatCheapAndHealthy/comments/example2" target="_blank" rel="noreferrer">Is there an app that actually helps with food waste? ↗</a>
+          </div>
+        </div>
+        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Reachability</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div></div>
+      </details>
+    </article>
+    <article class="card card-individual reveal" data-stage="problem aware" data-score="79">
+      
+      <header class="card-head">
+        <div class="rank">03</div>
+        <div class="identity">
+          <span class="eyebrow">Individual</span>
+          <h3>Zero Waste Chef (blog)</h3>
+          <div class="badges">
+            <span class="stage warm">Problem aware</span>
+          </div>
+        </div>
+        <div class="score" style="--score:79" aria-label="Fit score 79 out of 100">
+          <strong>79</strong><small>/100</small>
+        </div>
+      </header>
+      <div class="signal"><span>Public signal</span><p>Published a blog post &#x27;Why I Deleted Every Food Waste App&#x27; critiquing existing tools for requiring manual entry, lacking recipe integration, and not understanding kitchen reality.</p></div>
+      <div class="info-grid">
+        <div><span>Why it fits</span><p>Shelfie&#x27;s camera-scan approach directly addresses the manual-entry complaint. Recipe integration from pantry contents addresses the second major gap.</p></div>
+        <div><span>Why now</span><p>The post is still generating discussion. The author is responding to comments and hasn&#x27;t announced finding a solution.</p></div>
+        <div><span>Suggested channel</span><p>Email via the blog&#x27;s contact page</p></div>
+        <div><span>Caution</span><p>The author is opinionated and public. If they like the product, their endorsement carries weight. If they don&#x27;t, respect the feedback and don&#x27;t push.</p></div>
+      </div>
+      <blockquote><span>Suggested opener</span>Read your post on deleting food waste apps — the manual-entry frustration is exactly why we built Shelfie to work by camera scan. No typing, just point your phone at the fridge. The recipe matching uses what&#x27;s actually there. Would love your honest take on whether it solves the gaps you outlined.</blockquote>
+      <div class="follow-ups"><span>Follow-up sequence</span><ul><li><span>Follow-up 1</span><p>Quick note — we read your critique of the &#x27;smart suggestions&#x27; in existing apps. Shelfie&#x27;s recipe engine scores by ingredient freshness and expiry urgency, not just preference. Different approach entirely. Happy to demo.</p></li><li><span>Follow-up 2</span><p>Found this interesting — a food blogger with a similar critique switched to camera-based tracking and wrote about the difference. Thought it&#x27;d resonate: [link].</p></li></ul></div>
+      
+      <details>
+        <summary>Evidence and score breakdown</summary>
+        <div class="evidence">
+          <div><span>Evidence</span><p>A 2,000-word post that names 4 specific apps and details exactly why each failed their workflow. Published 23 days ago with active comment discussion.</p></div>
+          <div>
+            <span>Source</span>
+            <p>Company page · 2026-06-21</p>
+            <a href="https://zerowastechef.com/blog/deleted-apps" target="_blank" rel="noreferrer">Why I Deleted Every Food Waste App ↗</a>
+          </div>
+        </div>
+        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div><div class="metric"><span>Reachability</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div></div>
+      </details>
+    </article>
+        </div>
+      </section>
+      
+      <section>
+        <header class="section-head">
+          <h2>Markets to target.</h2>
+          <p>Audiences and repeated patterns, sized for content, SEO, and ASO strategy — not a message to send.</p>
+        </header>
+        <div class="cards">
+          
+    <article class="card card-segment reveal" data-stage="problem aware" data-score="77">
+      
+      <header class="card-head">
+        <div class="rank">01</div>
+        <div class="identity">
+          <span class="eyebrow">Segment</span>
+          <h3>Sunday meal-preppers who forget their fridge contents by midweek</h3>
+          <div class="badges">
+            <span class="stage warm">Problem aware</span>
+          </div>
+        </div>
+        <div class="score" style="--score:77" aria-label="Fit score 77 out of 100">
+          <strong>77</strong><small>/100</small>
+        </div>
+      </header>
+      <div class="signal"><span>Repeated pain pattern</span><p>A recurring r/MealPrepSunday megathread where 12+ users independently describe the same cycle: prep ingredients on Sunday, forget what&#x27;s left by Wednesday, and buy duplicates.</p></div>
+      <div class="info-grid">
+        <div><span>Why it fits</span><p>Shelfie&#x27;s continuous scan plus expiry prediction and recipe matching is the exact solution to the described workflow gap, at the scale of a recurring, monthly-refreshed thread rather than one post.</p></div>
+        <div><span>Why now</span><p>The megathread format refreshes monthly and remains active — a durable, recurring channel rather than a one-off signal.</p></div>
+        <div><span>Channels</span><ul><li>SEO/blog use-case page targeting the exact query shape</li><li>Recurring, disclosed participation in the r/MealPrepSunday megathread</li><li>ASO copy update highlighting the midweek reminder feature</li></ul></div>
+        <div><span>Caution</span><p>Segment-level evidence, not an individual lead — engage the community with disclosed affiliation rather than treating this as one contact.</p></div>
+      </div>
+      <blockquote class="content-angle"><span>Content angle</span>Searchable — this pattern maps directly to a recurring query shape (&#x27;meal prep app that remembers what I have&#x27;) worth a dedicated use-case landing page and an SEO push, not a one-time reply.</blockquote>
+      <div class="keywords"><span>Target keywords</span><div class="chip-row"><span class="chip">meal prep pantry tracker</span><span class="chip">app that remembers what&#x27;s in my fridge</span><span class="chip">meal prep forget ingredients</span></div></div>
+      <div class="proof-points"><span>Proof points</span><ul><li>200+ comments in a single thread refresh describing the same buy-forget-rebuy cycle</li><li>At least 12 distinct users explicitly asking for an app recommendation in one thread</li></ul></div>
+      
+      <details>
+        <summary>Evidence and score breakdown</summary>
+        <div class="evidence">
+          <div><span>Evidence</span><p>The thread has 200+ comments across its latest refresh (4 days old); at least 12 distinct users describe the buy-forget-rebuy cycle and several ask for app recommendations.</p></div>
+          <div>
+            <span>Source</span>
+            <p>Forum · 2026-07-10</p>
+            <a href="https://reddit.com/r/MealPrepSunday/comments/example5" target="_blank" rel="noreferrer">Weekly Meal Prep Problems Megathread ↗</a>
+          </div>
+        </div>
+        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div></div>
+      </details>
+    </article>
+        </div>
+      </section>
+      
+      <section>
+        <header class="section-head">
+          <h2>Partners to pitch.</h2>
+          <p>Organizations evaluated as accounts or partners, with a public contact path and a concrete first ask.</p>
+        </header>
+        <div class="cards">
+          
+    <article class="card card-company reveal" data-stage="trigger present" data-score="84">
+      
+      <header class="card-head">
+        <div class="rank">01</div>
+        <div class="identity">
+          <span class="eyebrow">Potential customer account</span>
+          <h3>GreenPlate Co</h3>
+          <div class="badges">
+            <span class="stage warm">Trigger present</span>
+          </div>
+        </div>
+        <div class="score" style="--score:84" aria-label="Fit score 84 out of 100">
+          <strong>84</strong><small>/100</small>
+        </div>
+      </header>
+      <div class="signal"><span>Gap or trigger</span><p>Hiring a &#x27;Sustainability Operations Lead&#x27; whose job description mentions &#x27;reducing internal food waste across our 3 meal kit locations by 40%&#x27; and &#x27;evaluating inventory intelligence tools.&#x27;</p></div>
+      <div class="info-grid">
+        <div><span>Combined value</span><p>Shelfie&#x27;s core intelligence — scan, predict, suggest — could be adapted for GreenPlate&#x27;s multi-location meal kit operation. The 40% reduction target signals real urgency and approved budget.</p></div>
+        <div><span>Why now</span><p>They&#x27;re hiring for this role now, which means budget is approved and the problem is prioritized this quarter.</p></div>
+        <div><span>Execution path</span><p>Warm BD — the hiring manager for this role is named on the job posting&#x27;s company page, giving a specific, public point of contact rather than a cold inbound.</p></div>
+        <div><span>Contact path</span><p>LinkedIn message to the hiring manager listed on the job posting</p></div>
+      </div>
+      <blockquote><span>BD pitch</span>Saw the Sustainability Ops Lead role — the 40% waste reduction target is exactly the outcome our AI pantry intelligence engine (scan, predict spoilage, suggest utilization) is built for. It runs in home kitchens today; the same detection layer could pilot across your 3 locations.</blockquote>
+      <div class="info-grid" style="margin-top:9px">
+        <div><span>What to propose</span><p>A scoped 30-day pilot at one location, evaluated against the 40% reduction target the role already has a mandate for.</p></div>
+        <div><span>Caution</span><p>This is a design-partner opportunity, not an immediate close — B2B sales cycle is longer and they may also be evaluating enterprise-only tools.</p></div>
+      </div>
+      
+      <details>
+        <summary>Evidence and score breakdown</summary>
+        <div class="evidence">
+          <div><span>Evidence</span><p>The job posting on LinkedIn (posted 5 days ago) explicitly describes the problem Shelfie solves at a commercial scale, at a company with an estimated 15-50 employees.</p></div>
+          <div>
+            <span>Source</span>
+            <p>Job post · 2026-07-09</p>
+            <a href="https://linkedin.com/jobs/example3" target="_blank" rel="noreferrer">Sustainability Operations Lead — GreenPlate Co ↗</a>
+          </div>
+        </div>
+        <div class="metrics"><div class="metric"><span>Strategic fit</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Execution ease</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div></div>
+      </details>
+    </article>
+        </div>
+      </section>
+
+      
+      <section>
+        <header class="section-head">
+          <h2>Signals that repeat.</h2>
+          <p>Patterns across individuals, segments, and companies reveal the strongest positioning, workflow, and outreach angles.</p>
+        </header>
+        <div class="patterns">
+          
+    <article class="pattern reveal">
+      <span class="pattern-num">01</span>
+      <div><h3>The buy-forget-rebuy cycle</h3><p>The most common pain across individuals and the segment is purchasing ingredients, forgetting they exist, and buying again. Shelfie&#x27;s scan + tracking directly breaks this cycle.</p></div>
+      <strong>4x</strong>
+    </article>
+    <article class="pattern reveal">
+      <span class="pattern-num">02</span>
+      <div><h3>Manual entry is the dealbreaker</h3><p>Every prospect who tried existing tools abandoned them because of manual data entry. Camera-scan is Shelfie&#x27;s strongest differentiator.</p></div>
+      <strong>3x</strong>
+    </article>
+    <article class="pattern reveal">
+      <span class="pattern-num">03</span>
+      <div><h3>Recipe-from-pantry demand</h3><p>Multiple prospects want recipes generated from what they already have, not what they need to buy. This is Shelfie&#x27;s core feature.</p></div>
+      <strong>3x</strong>
+    </article>
+        </div>
+      </section>
+
+      
+    <section class="competitive">
+      <header class="section-head">
+        <h2>The landscape they already live in.</h2>
+        <p>What prospects currently use and where this product wins.</p>
+      </header>
+      <div class="comp-grid">
+        <div class="comp-card">
+          <span>Top competitors</span>
+          <ul><li>SuperCook</li><li>NoWaste</li><li>Frost</li><li>Pantry Check</li><li>Notion templates</li></ul>
+        </div>
+        <div class="comp-card">
+          <span>Switching barriers</span>
+          <p>Low for individuals (free apps, no data lock-in). Medium for the company account (workflow integration, team adoption).</p>
+        </div>
+        <div class="comp-card">
+          <span>Where this product wins</span>
+          <p>Camera-scan eliminates manual entry — the #1 reason users abandon competing apps. Recipe engine scores by freshness urgency, not just preference.</p>
+        </div>
+      </div>
+    </section>
+
+      <section class="plan">
+        <div>
+          <span class="eyebrow" style="color:#111">Seven-day manual plan</span>
+          <h2>Lead with the manual-entry pain point. Show, don&#x27;t tell — demo the camera scan in the first touch.</h2>
+        </div>
+        <div class="plan-grid">
+          <div><span>First step</span><p>Contact the two highest-scoring individuals with a source-grounded message and a 30-second demo video link; open the GreenPlate Co conversation with the pilot proposal.</p></div>
+          <div><span>Follow-up</span><p>Share a free account for 14 days. No credit card. Ask for honest feedback, not a testimonial.</p></div>
+          <div><span>Success signal</span><p>Three individual conversations, one design-partner pilot conversation, and a published use-case page for the meal-prep segment within seven days.</p></div>
+          <div><span>Research scope</span><p>Public English-language sources, last 90 days</p></div>
+          <div><span>Channels to prioritize</span><ul><li>Community reply</li><li>YouTube reply</li><li>Email</li><li>LinkedIn</li><li>SEO/blog</li></ul></div>
+        </div>
+      </section>
+
+      
+    <section class="audit">
+      <header class="section-head">
+        <h2>How this research was done.</h2>
+        <p>Full audit trail for reproducibility and trust.</p>
+      </header>
+      <div class="audit-grid">
+        <div class="audit-card">
+          <span>Methodology</span>
+          <p>Searched Reddit, Twitter, Hacker News, and cooking forums for explicit waste-reduction demands, pantry management pain, and recipe-from-ingredients requests. Cross-referenced competitor reviews for switching signals.</p>
+        </div>
+        <div class="audit-card">
+          <span>Queries issued (10)</span>
+          <ul><li><code>reduce food waste app 2026</code></li><li><code>pantry management tool reddit</code></li><li><code>recipe from what I have reddit</code></li><li><code>too much food going bad</code></li><li><code>meal prep ingredient tracker</code></li><li><code>alternative to SuperCook</code></li><li><code>Pantry Chef vs alternatives</code></li><li><code>food waste anxiety reddit</code></li><li><code>bulk buying then throwing away</code></li><li><code>smart kitchen app recommendation</code></li></ul>
+        </div>
+        <div class="audit-card">
+          <span>Sources consulted (5)</span>
+          <ul><li><code>https://reddit.com/r/MealPrepSunday/comments/example1</code></li><li><code>https://reddit.com/r/EatCheapAndHealthy/comments/example2</code></li><li><code>https://news.ycombinator.com/item?id=example3</code></li><li><code>https://twitter.com/exampleuser/status/example4</code></li><li><code>https://www.reddit.com/r/ZeroWaste/comments/example5</code></li></ul>
+        </div>
+      </div>
+    </section>
+
+      <section class="limits">
+        <h2>Use this shortlist responsibly</h2>
+        <ul><li>These are potential customers, markets, and partners inferred from public signals, not confirmed buyers.</li><li>GreenPlate Co has a longer B2B sales cycle — treat as a design-partner pilot, not an immediate customer.</li><li>Reddit and YouTube outreach must disclose affiliation to avoid backlash.</li><li>The creator (MealPrepWeekly) may have already received recommendations in video comments — check before reaching out.</li><li>Competitor landscape was inferred from public reviews, not proprietary data. Actual market share may differ.</li><li>The Zero Waste Chef blog post is 23 days old — the author may have found a solution since writing it.</li></ul>
+      </section>
+    </main>
+
+    <footer>
+      <span>Generated by signal-scout</span>
+      <span>Outreach is never sent automatically.</span>
+    </footer>
+  </div>
+
+  <script>
+    document.querySelectorAll('.filter-bar button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-bar button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const filter = btn.dataset.filter;
+        document.querySelectorAll('.card').forEach(card => {
+          if (filter === 'all' || card.dataset.stage === filter) {
+            card.classList.remove('hidden');
+          } else {
+            card.classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll('.card').forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.classList.toggle('hidden', q.length > 0 && !text.includes(q));
+      });
+      if (q.length > 0) {
+        document.querySelectorAll('.filter-bar button').forEach(b => b.classList.remove('active'));
+      } else {
+        document.querySelector('.filter-bar button[data-filter="all"]').classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>
