@@ -61,23 +61,20 @@ def prose(value: Any) -> str:
 
 
 def cc_prompt(label: str, text: str) -> str:
-    """A hidden copy-source plus a stylized CLI-style button so a next action
-    can be pasted straight into Claude Code instead of retyped. The visible
-    button mimics a deep-link URI (claude-cli://run?prompt=...) for a
-    recognizable, tool-native affordance — clicking it copies the full plain
-    prompt text, not the truncated URI preview shown on the button.
-    esc() here is safe to read back via .textContent — the browser decodes
-    entities on read."""
-    uri_preview = f"claude-cli://run?prompt={quote(text)}"
-    if len(uri_preview) > 64:
-        uri_preview = uri_preview[:61] + "..."
+    """Shows the full next-action prompt in the open — never hidden or truncated —
+    so whoever reads the report sees exactly what would run before choosing an
+    action. Two ways to act on it, either works: a real `claude-cli://open` deep
+    link (see https://code.claude.com/docs/en/deep-links) that opens Claude Code
+    with the prompt pre-filled but NOT sent — it still has to be reviewed and
+    pressed Enter on locally — or a plain copy button for pasting anywhere else."""
+    deep_link = f"claude-cli://open?q={quote(text)}"
     return (
-        f'<div class="copy-row">'
-        f'<span class="copy-src" hidden>{esc(text)}</span>'
-        f'<button type="button" class="copy-btn cli-btn">'
-        f'<span class="cli-label">{esc(label)}</span>'
-        f'<code class="cli-uri">{esc(uri_preview)}</code>'
-        f'</button>'
+        f'<div class="prompt-block">'
+        f'<pre class="prompt-text">{esc(text)}</pre>'
+        f'<div class="prompt-actions">'
+        f'<a class="prompt-btn open-btn" href="{esc(deep_link)}">{esc(label)} ↗</a>'
+        f'<button type="button" class="prompt-btn copy-btn">Copy</button>'
+        f'</div>'
         f'</div>'
     )
 
@@ -239,7 +236,7 @@ def render_individual(item: dict[str, Any], index: int) -> str:
     )
     opener_html = (
         f'<blockquote><span>Suggested opener</span>{prose(opener)}</blockquote>'
-        f'{cc_prompt("Copy prompt for Claude Code", opener_prompt)}' if opener else
+        f'{cc_prompt("Open in Claude Code", opener_prompt)}' if opener else
         '<blockquote class="no-channel"><span>Next action</span>No public reply or DM channel exists. Evidence only, not a contactable lead.</blockquote>'
     )
 
@@ -285,7 +282,7 @@ def render_segment(item: dict[str, Any], index: int) -> str:
         f"Write a working draft (title, meta description, section outline) I can review before publishing."
     )
     extra = f'<blockquote class="content-angle"><span>Content angle</span>{prose(item.get("content_angle", ""))}</blockquote>'
-    extra += cc_prompt("Copy prompt for Claude Code", content_prompt)
+    extra += cc_prompt("Open in Claude Code", content_prompt)
     extra += f'<div class="keywords"><span>Target keywords</span><div class="chip-row">{keyword_html}</div></div>'
     if proof_points:
         extra += f'<div class="proof-points"><span>Proof points</span><ul>{proof_html}</ul></div>'
@@ -319,7 +316,7 @@ def render_company(item: dict[str, Any], index: int) -> str:
         f"Refine it, keep it under 90 words, and get it ready for me to review before sending — never send it yourself."
     )
     extra = f'<blockquote><span>BD pitch</span>{prose(item.get("bd_angle", ""))}</blockquote>'
-    extra += cc_prompt("Copy prompt for Claude Code", bd_prompt)
+    extra += cc_prompt("Open in Claude Code", bd_prompt)
 
     return f"""
     <article id="{anchor_id('company', index)}" class="card card-company reveal" data-stage="{stage_class(item.get('stage', ''))}" data-score="{score}">
@@ -581,6 +578,12 @@ def build_html(data: dict[str, Any]) -> str:
             f'<ol>{channel_list}</ol></div>'
         )
 
+    day1_prompt = (
+        f"Execute day 1 of the seven-day plan: {plan.get('first_step', '')}\n\n"
+        f"Success signal to watch for: {plan.get('success', '')}"
+    )
+    day1_prompt_html = cc_prompt("Open day-1 prompt in Claude Code", day1_prompt)
+
     patterns_section = f"""
       <section>
         <header class="section-head">
@@ -729,24 +732,25 @@ def build_html(data: dict[str, Any]) -> str:
       color: var(--muted); font-size: 13px; cursor: pointer; transition: color .15s, border-color .15s;
     }}
     .link-btn:hover {{ color: var(--a); border-color: var(--a); }}
-    .copy-row {{ margin-top: 8px; }}
-    .copy-btn {{
-      background: transparent; color: var(--a); border: 1px solid var(--a); border-radius: 8px;
-      padding: 7px 13px; font: 700 12px inherit; cursor: pointer; transition: background .15s, color .15s;
+    .prompt-block {{
+      margin-top: 10px; border: 1px solid var(--line-strong); border-radius: 12px;
+      background: var(--panel2); padding: 12px 13px;
     }}
-    .copy-btn:hover {{ background: var(--a); color: var(--fill-ink); }}
-    .copy-btn.done {{ background: var(--a); color: var(--fill-ink); border-color: var(--a); }}
-    .cli-btn {{
-      display: flex; flex-direction: column; align-items: flex-start; gap: 5px; width: 100%;
-      max-width: 420px; padding: 9px 13px; text-align: left;
+    .prompt-text {{
+      margin: 0 0 10px; padding: 0; background: none; border: 0; white-space: pre-wrap;
+      word-break: break-word; max-height: 220px; overflow-y: auto;
+      font: 400 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-soft);
     }}
-    .cli-label {{ font: 650 12px inherit; }}
-    .cli-uri {{
-      display: block; width: 100%; font: 400 11px ui-monospace, SFMono-Regular, Menlo, monospace;
-      color: var(--muted); background: var(--panel2); border-radius: 5px; padding: 4px 7px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    .prompt-actions {{ display: flex; gap: 8px; flex-wrap: wrap; }}
+    .prompt-btn {{
+      display: inline-flex; align-items: center; gap: 5px; background: transparent; color: var(--a);
+      border: 1px solid var(--a); border-radius: 8px; padding: 7px 13px; font: 700 12px inherit;
+      cursor: pointer; text-decoration: none; transition: background .15s, color .15s;
     }}
-    .cli-btn:hover .cli-uri {{ color: var(--fill-ink); background: color-mix(in srgb, var(--a) 22%, var(--panel2)); }}
+    .prompt-btn:hover {{ background: var(--a); color: var(--fill-ink); }}
+    .prompt-btn.done {{ background: var(--a); color: var(--fill-ink); border-color: var(--a); }}
+    .prompt-btn.open-btn {{ color: var(--b); border-color: var(--b); }}
+    .prompt-btn.open-btn:hover {{ background: var(--b); color: var(--fill-ink); }}
     .rank {{ font: 800 19px inherit; color: var(--a); padding-top: 6px; }}
     .identity h3 {{ font-size: 21px; letter-spacing: -.02em; margin: 4px 0 8px; }}
     .badges {{ display: flex; gap: 6px; flex-wrap: wrap; }}
@@ -972,7 +976,7 @@ def build_html(data: dict[str, Any]) -> str:
           <h2>{esc(plan.get('angle', 'Validate the pain before pitching the product.'))}</h2>
         </div>
         <div class="plan-grid">
-          <div><span>First step</span><p>{prose(plan.get('first_step', ''))}</p>{cc_prompt("Copy day-1 prompt for Claude Code", f"Execute day 1 of the seven-day plan: {plan.get('first_step', '')}\n\nSuccess signal to watch for: {plan.get('success', '')}")}</div>
+          <div><span>First step</span><p>{prose(plan.get('first_step', ''))}</p>{day1_prompt_html}</div>
           <div><span>Follow-up</span><p>{prose(plan.get('follow_up', ''))}</p></div>
           <div><span>Success signal</span><p>{prose(plan.get('success', ''))}</p></div>
           <div><span>Research scope</span><p>{esc(data.get('search_scope', 'Not specified'))}</p></div>
@@ -1030,7 +1034,8 @@ def build_html(data: dict[str, Any]) -> str:
     document.addEventListener('click', (e) => {{
       const copyBtn = e.target.closest('.copy-btn');
       if (copyBtn) {{
-        const src = copyBtn.previousElementSibling;
+        const block = copyBtn.closest('.prompt-block');
+        const src = block ? block.querySelector('.prompt-text') : copyBtn.previousElementSibling;
         copyText(src.textContent).then((ok) => flashButton(copyBtn, ok ? 'Copied ✓' : 'See prompt'));
         return;
       }}
