@@ -2,6 +2,21 @@
 """signal-scout MCP server — sells the research skill directly to other
 agents (B2A), not just to a human running Claude Code.
 
+Two tools, deliberately split by what actually adds value on top of what a
+capable calling agent (Claude Code included) already has for free:
+
+- `classify_and_score` — the one to reach for by default. Takes findings the
+  caller already gathered with its own web_search/web_fetch and does only
+  what a bare LLM call doesn't do reliably: disciplined Individual/Segment/
+  Company classification, per-type scoring, automated source verification,
+  and a portable HTML report. No web tools, no re-researching — cheaper,
+  and it doesn't pay to redo work the caller can already do itself.
+- `find_first_customers` — does its own web research end-to-end. Only worth
+  paying for when the caller has no web_search/web_fetch of its own; if the
+  caller is Claude Code or similar, prefer `classify_and_score` — running a
+  second research agent to duplicate tools the caller already has isn't a
+  real value-add, it's just marked-up compute.
+
 Requires ANTHROPIC_API_KEY (or an `ant auth login` profile — the SDK picks
 either up automatically). No payment provider is wired in yet: every call
 is metered to usage.jsonl via usage_meter.py so the founder can see real
@@ -41,29 +56,51 @@ DAILY_CALL_CAP = int(os.environ.get("SIGNAL_SCOUT_DAILY_CALL_CAP", "20"))
 DEPTH_LIMITS = {"quick": 5, "standard": 10, "deep": 20}
 FOCUS_VALUES = {"all", "individuals", "segments", "companies", "competitor-chasers", "design-partners"}
 
-SYSTEM_PROMPT = """You are signal-scout: turn a startup URL into an evidence-backed shortlist of \
-first customers, market segments, and companies worth pitching, using PUBLIC SIGNALS ONLY.
-
-Classify every candidate as exactly one of:
+CLASSIFICATION_RULES = """Classify every candidate as exactly one of:
 - Individual: one addressable person you could plausibly reply to, DM, or comment at.
 - Segment: an audience or demand pattern, not a person.
 - Company: an organization evaluated as a BD/partnership/account target.
-
-Use web_search and web_fetch to find explicit demand, pain, workaround, switching, and timing \
-signals across forums, social posts, reviews, GitHub issues, and company pages. Prefer original \
-pages over search snippets. Log every query you actually issued in search_queries_used and every \
-source you actually opened in sources_consulted.
 
 Score Individuals on pain_strength/product_fit/timing/reachability/evidence_quality (0-5 each); \
 Segments on pain_strength/product_fit/timing/evidence_quality; Companies on \
 strategic_fit/timing/execution_ease/evidence_quality. Never claim a prospect is interested, has \
 consented, or will buy — these are hypotheses based on public signals.
 
-Do not bypass paywalls, login walls, or robots restrictions. Do not use data brokers, scraped \
-contact databases, or infer protected traits. A "contact path" for a Company must be a public, \
-self-serve channel — never a scraped personal email.
+A "contact path" for a Company must be a public, self-serve channel — never a scraped personal \
+email. Output must conform exactly to the JSON schema you were given — no prose outside the JSON."""
 
-Output must conform exactly to the JSON schema you were given — no prose outside the JSON."""
+# Used by find_first_customers, which does its own web research. Most callers that
+# already have their own web_search/web_fetch (Claude Code included) should reach for
+# classify_and_score instead — see the module docstring and mcp-server/README.md for why.
+RESEARCH_SYSTEM_PROMPT = f"""You are signal-scout: turn a startup URL into an evidence-backed \
+shortlist of first customers, market segments, and companies worth pitching, using PUBLIC \
+SIGNALS ONLY.
+
+Use web_search and web_fetch to find explicit demand, pain, workaround, switching, and timing \
+signals across forums, social posts, reviews, GitHub issues, and company pages. Prefer original \
+pages over search snippets. Log every query you actually issued in search_queries_used and every \
+source you actually opened in sources_consulted.
+
+Do not bypass paywalls, login walls, or robots restrictions. Do not use data brokers, scraped \
+contact databases, or infer protected traits.
+
+{CLASSIFICATION_RULES}"""
+
+# Used by classify_and_score, which takes findings the CALLER already gathered (its own
+# web_search/web_fetch) and does only the part a bare LLM call doesn't do reliably:
+# disciplined 3-type classification, per-type scoring, and citing only the given sources.
+CLASSIFY_SYSTEM_PROMPT = f"""You are signal-scout's classification layer. You are given a list of \
+findings someone else already researched (source URL, title, and the evidence text they found) —
+do NOT invent additional prospects, additional evidence, or additional sources beyond what's \
+provided. Your job is only to classify, score, and structure exactly these findings.
+
+For each finding, decide whether it's usable evidence at all — a finding with no real pain, \
+demand, or timing signal is not a qualified prospect and should be left out rather than forced in \
+at a low score. Copy `source_url` and `evidence` from the input into your output verbatim (a \
+downstream script re-fetches each URL and fuzzy-matches your `evidence` text against the live \
+page — a paraphrase that drifts from the original evidence will fail that check).
+
+{CLASSIFICATION_RULES}"""
 
 
 def _client() -> anthropic.Anthropic:
@@ -91,27 +128,24 @@ class _UsageTotal:
             setattr(self, key, value)
 
 
-def _run_research(product_url: str, depth: str, focus: str) -> tuple[dict[str, Any], _UsageTotal]:
+def _complete(system: str, user_prompt: str, *, tools: list[dict[str, Any]] | None) -> tuple[dict[str, Any], _UsageTotal]:
+    """Shared call+continuation+parse loop. `tools=None` skips web tools entirely —
+    classify_and_score never needs them, which is most of why it's cheaper."""
     client = _client()
-    max_prospects = DEPTH_LIMITS[depth]
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    user_prompt = (
-        f"Research {product_url} and produce a signal-scout analysis. "
-        f"Depth: {depth} (up to {max_prospects} total prospects across all types). "
-        f"Focus: {focus}. Today's date: {today}."
-    )
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_prompt}]
 
     def _call() -> Any:
-        return client.messages.create(
+        kwargs: dict[str, Any] = dict(
             model=MODEL,
             max_tokens=16000,
-            system=SYSTEM_PROMPT,
+            system=system,
             thinking={"type": "adaptive"},
-            tools=_tools(),
             output_config={"format": {"type": "json_schema", "schema": ANALYSIS_SCHEMA}},
             messages=messages,
         )
+        if tools:
+            kwargs["tools"] = tools
+        return client.messages.create(**kwargs)
 
     response = _call()
     usage_totals = _add_usage(_UsageTotal({}), response.usage)
@@ -125,11 +159,11 @@ def _run_research(product_url: str, depth: str, focus: str) -> tuple[dict[str, A
 
     if response.stop_reason == "refusal":
         raise RuntimeError(
-            "Research request was declined by safety classifiers "
+            "Request was declined by safety classifiers "
             f"(stop_details={getattr(response, 'stop_details', None)})."
         )
     if response.stop_reason == "pause_turn":
-        raise RuntimeError(f"Research did not finish within {MAX_PAUSE_TURNS} continuation turns.")
+        raise RuntimeError(f"Did not finish within {MAX_PAUSE_TURNS} continuation turns.")
 
     text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
     if not text.strip():
@@ -138,48 +172,40 @@ def _run_research(product_url: str, depth: str, focus: str) -> tuple[dict[str, A
     return analysis, _UsageTotal(usage_totals)
 
 
+def _run_research(product_url: str, depth: str, focus: str) -> tuple[dict[str, Any], _UsageTotal]:
+    max_prospects = DEPTH_LIMITS[depth]
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    user_prompt = (
+        f"Research {product_url} and produce a signal-scout analysis. "
+        f"Depth: {depth} (up to {max_prospects} total prospects across all types). "
+        f"Focus: {focus}. Today's date: {today}."
+    )
+    return _complete(RESEARCH_SYSTEM_PROMPT, user_prompt, tools=_tools())
+
+
+def _run_classification(
+    product_url: str, target_customer: str, findings: list[dict[str, Any]], depth: str, focus: str
+) -> tuple[dict[str, Any], _UsageTotal]:
+    max_prospects = DEPTH_LIMITS[depth]
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    user_prompt = (
+        f"Product: {product_url}\n"
+        f"Target customer: {target_customer or 'not specified'}\n"
+        f"Depth: {depth} (up to {max_prospects} total prospects across all types). Focus: {focus}. "
+        f"Today's date: {today}.\n\n"
+        f"Findings already researched (classify, score, and structure only these):\n"
+        f"{json.dumps(findings, indent=2)}"
+    )
+    return _complete(CLASSIFY_SYSTEM_PROMPT, user_prompt, tools=None)
+
+
 def _slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return slug or "product"
 
 
-mcp = FastMCP(
-    "signal-scout",
-    instructions=(
-        "Turns a startup URL into an evidence-backed shortlist of first customers, market "
-        "segments, and companies worth pitching, using public signals only. Call "
-        "find_first_customers with a product URL to get a scored report."
-    ),
-)
-
-
-@mcp.tool()
-def find_first_customers(product_url: str, depth: str = "standard", focus: str = "all") -> dict[str, Any]:
-    """Research a startup URL and return an evidence-backed shortlist of first customers,
-    market segments, and companies worth pitching, using public signals only.
-
-    Args:
-        product_url: The startup's URL, repo, or a one-line product description.
-        depth: "quick" (<=5 prospects), "standard" (<=10, default), or "deep" (<=20).
-        focus: "all" (default), "individuals", "segments", "companies",
-            "competitor-chasers", or "design-partners".
-
-    Returns a summary plus paths to the full JSON analysis and the standalone HTML report
-    (verified via verify_sources.py --apply before the report is generated).
-    """
-    if depth not in DEPTH_LIMITS:
-        raise ValueError(f"depth must be one of {sorted(DEPTH_LIMITS)}, got {depth!r}")
-    if focus not in FOCUS_VALUES:
-        raise ValueError(f"focus must be one of {sorted(FOCUS_VALUES)}, got {focus!r}")
-    if calls_today() >= DAILY_CALL_CAP:
-        raise RuntimeError(
-            f"Daily call cap ({DAILY_CALL_CAP}) reached and no payment gate exists yet — "
-            "refusing to spend more API budget today. Raise SIGNAL_SCOUT_DAILY_CALL_CAP "
-            "once you've priced this deliberately (see ../MONETIZATION.md)."
-        )
-
-    analysis, usage = _run_research(product_url, depth, focus)
-
+def _finish_run(analysis: dict[str, Any], usage: _UsageTotal, *, product_url: str, depth: str, focus: str) -> dict[str, Any]:
+    """Shared post-processing for both tools: write, verify, generate the report, meter."""
     slug = _slugify(analysis.get("title") or product_url)
     run_dir = OUTPUT_DIR / slug
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -217,6 +243,93 @@ def find_first_customers(product_url: str, depth: str = "standard", focus: str =
         "source_verification": verify.stdout.strip(),
         "estimated_cost_usd": cost,
     }
+
+
+mcp = FastMCP(
+    "signal-scout",
+    instructions=(
+        "Turns research findings into an evidence-backed, verified shortlist of first customers, "
+        "market segments, and companies worth pitching. Prefer classify_and_score if you already "
+        "gathered findings with your own web_search/web_fetch — it's cheaper and doesn't duplicate "
+        "work you can already do. Use find_first_customers only if you have no web tools of your own."
+    ),
+)
+
+
+def _validate_depth_focus(depth: str, focus: str) -> None:
+    if depth not in DEPTH_LIMITS:
+        raise ValueError(f"depth must be one of {sorted(DEPTH_LIMITS)}, got {depth!r}")
+    if focus not in FOCUS_VALUES:
+        raise ValueError(f"focus must be one of {sorted(FOCUS_VALUES)}, got {focus!r}")
+    # Checked before the (paid) model call, not after — a cap that only fires once the
+    # expensive call already happened wouldn't protect the budget it exists to protect.
+    if calls_today() >= DAILY_CALL_CAP:
+        raise RuntimeError(
+            f"Daily call cap ({DAILY_CALL_CAP}) reached and no payment gate exists yet — "
+            "refusing to spend more API budget today. Raise SIGNAL_SCOUT_DAILY_CALL_CAP "
+            "once you've priced this deliberately (see ../MONETIZATION.md)."
+        )
+
+
+@mcp.tool()
+def classify_and_score(
+    product_url: str,
+    findings: list[dict[str, Any]],
+    target_customer: str = "",
+    depth: str = "standard",
+    focus: str = "all",
+) -> dict[str, Any]:
+    """Classify and score findings YOU already researched — the default choice for a caller
+    that has its own web_search/web_fetch (Claude Code included). Does not re-research
+    anything; it only adds what a bare LLM call doesn't do reliably: disciplined
+    Individual/Segment/Company classification, per-type scoring, automated source
+    verification, and a portable HTML report.
+
+    Args:
+        product_url: The startup's URL, repo, or a one-line product description.
+        findings: A list of dicts you already gathered, each with at least
+            "source_url" and "evidence" (the exact text supporting the signal), plus
+            whatever of "source_title", "source_type", "signal_date" you have. Do not
+            pad this with fabricated findings — classification only covers what's given.
+        target_customer: Your ICP description, if known (optional — improves fit scoring).
+        depth: "quick" (<=5 prospects), "standard" (<=10, default), or "deep" (<=20) —
+            caps how many of `findings` get promoted to the primary shortlist.
+        focus: "all" (default), "individuals", "segments", "companies",
+            "competitor-chasers", or "design-partners".
+
+    Returns a summary plus paths to the full JSON analysis and the standalone HTML report
+    (verified via verify_sources.py --apply before the report is generated).
+    """
+    _validate_depth_focus(depth, focus)
+    if not findings:
+        raise ValueError("findings must be a non-empty list — nothing to classify.")
+
+    analysis, usage = _run_classification(product_url, target_customer, findings, depth, focus)
+    return _finish_run(analysis, usage, product_url=product_url, depth=depth, focus=focus)
+
+
+@mcp.tool()
+def find_first_customers(product_url: str, depth: str = "standard", focus: str = "all") -> dict[str, Any]:
+    """Research a startup URL end-to-end and return an evidence-backed shortlist of first
+    customers, market segments, and companies worth pitching, using public signals only.
+
+    Only reach for this if you have no web_search/web_fetch of your own — if you do (most
+    agent harnesses, including Claude Code, already have both), gather findings yourself
+    and call classify_and_score instead. Paying this tool to re-run searches you could run
+    yourself for free doesn't add value; it just marks up compute.
+
+    Args:
+        product_url: The startup's URL, repo, or a one-line product description.
+        depth: "quick" (<=5 prospects), "standard" (<=10, default), or "deep" (<=20).
+        focus: "all" (default), "individuals", "segments", "companies",
+            "competitor-chasers", or "design-partners".
+
+    Returns a summary plus paths to the full JSON analysis and the standalone HTML report
+    (verified via verify_sources.py --apply before the report is generated).
+    """
+    _validate_depth_focus(depth, focus)
+    analysis, usage = _run_research(product_url, depth, focus)
+    return _finish_run(analysis, usage, product_url=product_url, depth=depth, focus=focus)
 
 
 if __name__ == "__main__":
