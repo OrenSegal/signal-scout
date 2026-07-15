@@ -1,0 +1,12 @@
+{
+  "name": "signal-scout",
+  "description": "Turns a startup URL or product description into an evidence-backed shortlist of first customers, market segments, and companies worth pitching — using public signals only.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Oren Segal"
+  },
+  "homepage": "https://github.com/OrenSegal/signal-scout",
+  "repository": "https://github.com/OrenSegal/signal-scout",
+  "license": "MIT",
+  "keywords": ["sales", "gtm", "prospecting", "customer-discovery", "outreach"]
+}

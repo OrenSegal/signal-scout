@@ -1,0 +1,219 @@
+{
+  "title": "Shelfie",
+  "product": "AI-powered kitchen intelligence that scans your pantry, predicts waste, and suggests recipes from what you already have.",
+  "product_url": "https://shelfie.app",
+  "target_customer": "Health-conscious home cooks who meal prep and buy in bulk",
+  "adjacent_icp": "Budget-conscious families trying to reduce grocery waste",
+  "search_scope": "Public English-language sources, last 90 days",
+  "generated_at": "2026-07-14",
+  "methodology": "Searched Reddit, Twitter, Hacker News, and cooking forums for explicit waste-reduction demands, pantry management pain, and recipe-from-ingredients requests. Cross-referenced competitor reviews for switching signals.",
+  "search_queries_used": [
+    "reduce food waste app 2026",
+    "pantry management tool reddit",
+    "recipe from what I have reddit",
+    "too much food going bad",
+    "meal prep ingredient tracker",
+    "alternative to SuperCook",
+    "Pantry Chef vs alternatives",
+    "food waste anxiety reddit",
+    "bulk buying then throwing away",
+    "smart kitchen app recommendation"
+  ],
+  "sources_consulted": [
+    "https://reddit.com/r/MealPrepSunday/comments/example1",
+    "https://reddit.com/r/EatCheapAndHealthy/comments/example2",
+    "https://news.ycombinator.com/item?id=example3",
+    "https://twitter.com/exampleuser/status/example4",
+    "https://www.reddit.com/r/ZeroWaste/comments/example5"
+  ],
+  "verdict": "Strong early-demand signals across all three prospect types: individuals actively requesting a tool, a repeated pantry-forgetting pattern worth targeting with content, and one company whose hiring signal points to a design-partner opportunity.",
+  "individuals": [
+    {
+      "name": "MealPrepWeekly",
+      "stage": "High intent",
+      "score": 97,
+      "pain_signal": "Published a YouTube video titled 'I Keep Throwing Away Groceries' describing the exact problem of buying ingredients for meal prep but forgetting what's in the fridge.",
+      "evidence": "A 12-minute video with 45K views where the creator walks through their fridge, shows expired items, and asks followers for app recommendations.",
+      "why_fit": "Shelfie's scan-and-track feature directly solves the 'buy but forget' loop. The creator already uses manual spreadsheets.",
+      "why_now": "The video was posted 11 days ago and the creator is actively responding to comment suggestions.",
+      "source_title": "I Keep Throwing Away Groceries — YouTube",
+      "source_url": "https://www.youtube.com/watch?v=example1",
+      "source_type": "Social post",
+      "signal_date": "2026-07-03",
+      "suggested_channel": "Reply to the YouTube comment thread where they ask for app suggestions",
+      "opener": "Saw your video on the grocery waste cycle — the spreadsheet-to-trash loop is painfully familiar. We built a tool that scans your pantry with your camera and matches recipes to what's actually there. Would a free trial be useful to test against your current system?",
+      "follow_up_sequence": [
+        "Quick follow-up — a few people in your comments mentioned apps that track pantry by manually entering items. Ours does it by photo scan, which might fit your workflow better. Happy to walk you through it in 5 minutes.",
+        "Found this — a creator with a similar setup switched to camera-based tracking and cut their waste by 60% in a month. Thought you'd find the comparison interesting: [link]. No pitch, just data."
+      ],
+      "caution": "Confirm they haven't already found a solution through the comments. Check the thread before reaching out.",
+      "competitor_mentioned": "",
+      "dimensions": {
+        "pain_strength": 5,
+        "product_fit": 5,
+        "timing": 5,
+        "reachability": 5,
+        "evidence_quality": 4
+      }
+    },
+    {
+      "name": "The Frugal Kitchen (Reddit user)",
+      "stage": "Problem aware",
+      "score": 95,
+      "pain_signal": "Posted a detailed thread on r/EatCheapAndHealthy describing spending $200/week on groceries and throwing away roughly $60 worth. Asked 'is there an app that actually helps with this?'",
+      "evidence": "The post includes a photo of their fridge with expired items and a breakdown of their monthly waste cost. 47 comments, many suggesting apps.",
+      "why_fit": "The user is already quantifying the problem and actively seeking a tool. Shelfie's waste prediction and recipe matching address both the tracking and the utilization.",
+      "why_now": "Posted 9 days ago. Still active in the thread responding to suggestions.",
+      "source_title": "Is there an app that actually helps with food waste?",
+      "source_url": "https://reddit.com/r/EatCheapAndHealthy/comments/example2",
+      "source_type": "Forum",
+      "signal_date": "2026-07-05",
+      "suggested_channel": "Reply in the Reddit thread",
+      "opener": "The $60/week waste number is wild — and unfortunately common. We built Shelfie specifically for this: scan your fridge, get recipes matched to what's actually there before it goes bad. It tracks expiry by sight. Would love your take on whether it fits your workflow.",
+      "follow_up_sequence": [
+        "Saw some people in the thread suggesting spreadsheets — those work until you forget to update them. Shelfie updates by camera scan so the data stays current without manual effort. Happy to set you up with a free account.",
+        "Quick update — we just added a weekly 'use it first' alert that tells you what to cook before anything expires. Thought that maps to exactly what you described. No strings, just try it."
+      ],
+      "caution": "Reddit users value peer recommendations over brand accounts. Engage genuinely, not commercially.",
+      "competitor_mentioned": "Nofridge (mentioned in comments by other users)",
+      "dimensions": {
+        "pain_strength": 5,
+        "product_fit": 4,
+        "timing": 5,
+        "reachability": 5,
+        "evidence_quality": 5
+      }
+    },
+    {
+      "name": "Zero Waste Chef (blog)",
+      "stage": "Problem aware",
+      "score": 79,
+      "pain_signal": "Published a blog post 'Why I Deleted Every Food Waste App' critiquing existing tools for requiring manual entry, lacking recipe integration, and not understanding kitchen reality.",
+      "evidence": "A 2,000-word post that names 4 specific apps and details exactly why each failed their workflow. Published 23 days ago with active comment discussion.",
+      "why_fit": "Shelfie's camera-scan approach directly addresses the manual-entry complaint. Recipe integration from pantry contents addresses the second major gap.",
+      "why_now": "The post is still generating discussion. The author is responding to comments and hasn't announced finding a solution.",
+      "source_title": "Why I Deleted Every Food Waste App",
+      "source_url": "https://zerowastechef.com/blog/deleted-apps",
+      "source_type": "Company page",
+      "signal_date": "2026-06-21",
+      "suggested_channel": "Email via the blog's contact page",
+      "opener": "Read your post on deleting food waste apps — the manual-entry frustration is exactly why we built Shelfie to work by camera scan. No typing, just point your phone at the fridge. The recipe matching uses what's actually there. Would love your honest take on whether it solves the gaps you outlined.",
+      "follow_up_sequence": [
+        "Quick note — we read your critique of the 'smart suggestions' in existing apps. Shelfie's recipe engine scores by ingredient freshness and expiry urgency, not just preference. Different approach entirely. Happy to demo.",
+        "Found this interesting — a food blogger with a similar critique switched to camera-based tracking and wrote about the difference. Thought it'd resonate: [link]."
+      ],
+      "caution": "The author is opinionated and public. If they like the product, their endorsement carries weight. If they don't, respect the feedback and don't push.",
+      "competitor_mentioned": "NoWaste, Frost, Pantry Check, SuperCook (all named in the post)",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 4,
+        "timing": 3,
+        "reachability": 4,
+        "evidence_quality": 5
+      }
+    }
+  ],
+  "segments": [
+    {
+      "name": "Sunday meal-preppers who forget their fridge contents by midweek",
+      "stage": "Problem aware",
+      "score": 77,
+      "pain_signal": "A recurring r/MealPrepSunday megathread where 12+ users independently describe the same cycle: prep ingredients on Sunday, forget what's left by Wednesday, and buy duplicates.",
+      "evidence": "The thread has 200+ comments across its latest refresh (4 days old); at least 12 distinct users describe the buy-forget-rebuy cycle and several ask for app recommendations.",
+      "why_fit": "Shelfie's continuous scan plus expiry prediction and recipe matching is the exact solution to the described workflow gap, at the scale of a recurring, monthly-refreshed thread rather than one post.",
+      "why_now": "The megathread format refreshes monthly and remains active — a durable, recurring channel rather than a one-off signal.",
+      "source_title": "Weekly Meal Prep Problems Megathread",
+      "source_url": "https://reddit.com/r/MealPrepSunday/comments/example5",
+      "source_type": "Forum",
+      "signal_date": "2026-07-10",
+      "content_angle": "Searchable — this pattern maps directly to a recurring query shape ('meal prep app that remembers what I have') worth a dedicated use-case landing page and an SEO push, not a one-time reply.",
+      "target_keywords": [
+        "meal prep pantry tracker",
+        "app that remembers what's in my fridge",
+        "meal prep forget ingredients"
+      ],
+      "suggested_channels": [
+        "SEO/blog use-case page targeting the exact query shape",
+        "Recurring, disclosed participation in the r/MealPrepSunday megathread",
+        "ASO copy update highlighting the midweek reminder feature"
+      ],
+      "proof_points": [
+        "200+ comments in a single thread refresh describing the same buy-forget-rebuy cycle",
+        "At least 12 distinct users explicitly asking for an app recommendation in one thread"
+      ],
+      "caution": "Segment-level evidence, not an individual lead — engage the community with disclosed affiliation rather than treating this as one contact.",
+      "competitor_mentioned": "Notion templates, Google Sheets (manual workarounds)",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 4,
+        "timing": 4,
+        "evidence_quality": 3
+      }
+    }
+  ],
+  "companies": [
+    {
+      "name": "GreenPlate Co",
+      "role": "Potential customer account",
+      "stage": "Trigger present",
+      "score": 84,
+      "pain_signal": "Hiring a 'Sustainability Operations Lead' whose job description mentions 'reducing internal food waste across our 3 meal kit locations by 40%' and 'evaluating inventory intelligence tools.'",
+      "evidence": "The job posting on LinkedIn (posted 5 days ago) explicitly describes the problem Shelfie solves at a commercial scale, at a company with an estimated 15-50 employees.",
+      "why_fit": "Shelfie's core intelligence — scan, predict, suggest — could be adapted for GreenPlate's multi-location meal kit operation. The 40% reduction target signals real urgency and approved budget.",
+      "why_now": "They're hiring for this role now, which means budget is approved and the problem is prioritized this quarter.",
+      "source_title": "Sustainability Operations Lead — GreenPlate Co",
+      "source_url": "https://linkedin.com/jobs/example3",
+      "source_type": "Job post",
+      "signal_date": "2026-07-09",
+      "execution_path": "Warm BD — the hiring manager for this role is named on the job posting's company page, giving a specific, public point of contact rather than a cold inbound.",
+      "contact_path": "LinkedIn message to the hiring manager listed on the job posting",
+      "bd_angle": "Saw the Sustainability Ops Lead role — the 40% waste reduction target is exactly the outcome our AI pantry intelligence engine (scan, predict spoilage, suggest utilization) is built for. It runs in home kitchens today; the same detection layer could pilot across your 3 locations.",
+      "what_to_propose": "A scoped 30-day pilot at one location, evaluated against the 40% reduction target the role already has a mandate for.",
+      "caution": "This is a design-partner opportunity, not an immediate close — B2B sales cycle is longer and they may also be evaluating enterprise-only tools.",
+      "dimensions": {
+        "strategic_fit": 4,
+        "timing": 5,
+        "execution_ease": 3,
+        "evidence_quality": 5
+      }
+    }
+  ],
+  "patterns": [
+    {
+      "title": "The buy-forget-rebuy cycle",
+      "count": 4,
+      "insight": "The most common pain across individuals and the segment is purchasing ingredients, forgetting they exist, and buying again. Shelfie's scan + tracking directly breaks this cycle."
+    },
+    {
+      "title": "Manual entry is the dealbreaker",
+      "count": 3,
+      "insight": "Every prospect who tried existing tools abandoned them because of manual data entry. Camera-scan is Shelfie's strongest differentiator."
+    },
+    {
+      "title": "Recipe-from-pantry demand",
+      "count": 3,
+      "insight": "Multiple prospects want recipes generated from what they already have, not what they need to buy. This is Shelfie's core feature."
+    }
+  ],
+  "competitive_context": {
+    "top_competitors": ["SuperCook", "NoWaste", "Frost", "Pantry Check", "Notion templates"],
+    "switching_barriers": "Low for individuals (free apps, no data lock-in). Medium for the company account (workflow integration, team adoption).",
+    "differentiation_angle": "Camera-scan eliminates manual entry — the #1 reason users abandon competing apps. Recipe engine scores by freshness urgency, not just preference."
+  },
+  "outreach_plan": {
+    "angle": "Lead with the manual-entry pain point. Show, don't tell — demo the camera scan in the first touch.",
+    "first_step": "Contact the two highest-scoring individuals with a source-grounded message and a 30-second demo video link; open the GreenPlate Co conversation with the pilot proposal.",
+    "follow_up": "Share a free account for 14 days. No credit card. Ask for honest feedback, not a testimonial.",
+    "success": "Three individual conversations, one design-partner pilot conversation, and a published use-case page for the meal-prep segment within seven days.",
+    "channels_to_prioritize": ["Community reply", "YouTube reply", "Email", "LinkedIn", "SEO/blog"],
+    "personalization_notes": "Reference the specific pain each prospect described. Mirror their communication style — casual for Reddit, professional for LinkedIn, conversational for blog creators."
+  },
+  "limits": [
+    "These are potential customers, markets, and partners inferred from public signals, not confirmed buyers.",
+    "GreenPlate Co has a longer B2B sales cycle — treat as a design-partner pilot, not an immediate customer.",
+    "Reddit and YouTube outreach must disclose affiliation to avoid backlash.",
+    "The creator (MealPrepWeekly) may have already received recommendations in video comments — check before reaching out.",
+    "Competitor landscape was inferred from public reviews, not proprietary data. Actual market share may differ.",
+    "The Zero Waste Chef blog post is 23 days old — the author may have found a solution since writing it."
+  ]
+}
