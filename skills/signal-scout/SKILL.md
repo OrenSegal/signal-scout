@@ -274,7 +274,7 @@ Create a standalone HTML report unless the user explicitly requests chat-only ou
 
 1. Write structured JSON following the schema above and in [references/report-artifact.md](references/report-artifact.md).
 2. Save the JSON to a temp file: `analysis.json` in the workspace.
-3. Run `python3 <skill_dir>/scripts/verify_sources.py analysis.json` and review the output. It fetches every `source_url` and fuzzy-matches the cited `evidence` against the live page — this catches dead links and evidence paraphrased from a search snippet that self-graded `evidence_quality` scores miss. For any `UNREACHABLE`/`INVALID_URL` result, drop the prospect or find a working source before continuing. For `LOW_MATCH`, re-read the source and either tighten the `evidence` quote or note the mismatch in `limits` — a low match isn't always wrong (paraphrase, page redesign), but it must not pass silently.
+3. Run `python3 <skill_dir>/scripts/verify_sources.py analysis.json --apply` and review the output. It fetches every `source_url` (routing `reddit.com`/`www.reddit.com` through their `old.reddit.com` equivalent — see [references/research-framework.md](references/research-framework.md#source-mix) for why) and fuzzy-matches the cited `evidence` against the live page — this catches dead links and evidence paraphrased from a search snippet that self-graded `evidence_quality` scores miss. `--apply` makes the cleanup automatic and robust instead of manual: it rewrites `analysis.json` in place, dropping any prospect whose source came back `UNREACHABLE`/`INVALID_URL` and adding an unverified-evidence caution to anything `BOT_BLOCKED` (a platform that 403/429s script fetches outright, e.g. a bare API endpoint or LinkedIn/X/Glassdoor/Indeed — not necessarily a dead link). For `LOW_MATCH` entries — not auto-fixed, since these need judgment — re-read the source and either tighten the `evidence` quote or note the mismatch in `limits`; a low match isn't always wrong (paraphrase, page redesign), but it must not pass silently.
 4. Run `python3 <skill_dir>/scripts/generate_report.py analysis.json outputs/signal-scout-report.html` (use the absolute path to the skill's scripts directory).
 5. Verify every section rendered, source links resolve, scores and dimensions match the type they belong to, and no card shows an empty/"N/A" field.
 6. Return a clickable absolute file link in the final response.
@@ -338,7 +338,7 @@ Before delivering, verify every item:
 - [ ] Research audit logs queries and sources.
 - [ ] Limits array discloses all assumptions, missing evidence, and classification calls.
 - [ ] Report was generated and the file link works.
-- [ ] `scripts/verify_sources.py` was run and every `UNREACHABLE`/`INVALID_URL` result was resolved (prospect dropped or source fixed) before the final report.
+- [ ] `scripts/verify_sources.py --apply` was run and every `UNREACHABLE`/`INVALID_URL` result was resolved (prospect auto-dropped or source fixed) before the final report.
 
 ## Quality bar
 
