@@ -19,6 +19,15 @@ Most "find me customers" prompts return a flat list of "prospects" that don't qu
 
 See [`examples/finder-report.json`](examples/finder-report.json) and its rendered [`examples/finder-report.html`](examples/finder-report.html) for a full worked example.
 
+## Beyond the one-off report
+
+Four things push this past a single static list, all opt-in per product (see [`skills/signal-scout/references/roadmap.md`](skills/signal-scout/references/roadmap.md) for when the agent should offer each):
+
+- **Source verification** — `scripts/verify_sources.py` fetches every cited source and fuzzy-matches the evidence against the live page before a report ships, catching dead links and paraphrased-from-a-snippet evidence that self-graded scores miss. Runs automatically every time.
+- **Outcome feedback loop** — `scripts/log_outcome.py` records what actually happened after outreach (replied / converted / went cold); `scripts/recalibrate.py` turns that history into per-source-type and per-query-bucket hit rates, so the next run for the same product weights toward what's actually working instead of trusting self-graded evidence quality alone.
+- **Watch mode** — `scripts/diff_reports.py` compares two dated snapshots of the same product and surfaces only new prospects, dropped prospects, and growing patterns — pairs with a recurring scheduled run instead of a full re-read every time.
+- **Vertical query packs** — [`skills/signal-scout/references/query-packs/`](skills/signal-scout/references/query-packs/) ships tuned query buckets and source mixes for devtools, health/wellness, and marketplace/SaaS products, extendable as new verticals show a repeatable pattern.
+
 ## Install
 
 Pick whichever fits how you work — all three install the same skill files.
