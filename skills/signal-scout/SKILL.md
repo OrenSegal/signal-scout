@@ -99,7 +99,7 @@ If `suggested_channel` is "No public reply/DM channel exists," omit `opener` and
 
 ```json
 {
-  "name": "string — short segment name, e.g. 'Cooklist comparison-shoppers'",
+  "name": "string — short segment name, e.g. '[Competitor] comparison-shoppers'",
   "stage": "string — High intent | Problem aware | Trigger present | Potential fit",
   "score": "number 0-100",
   "pain_signal": "string — the repeated pain or demand pattern",
@@ -198,6 +198,7 @@ If `suggested_channel` is "No public reply/DM channel exists," omit `opener` and
 - Map the competitive landscape: who are the 3-5 products prospects likely already use.
 - Infer missing context when safe and label the inference. Ask one concise question only when ambiguity would materially change the search.
 - Log every inference in the `limits` array so the user knows what was assumed.
+- If the product has zero paying customers yet (pre-launch, pre-revenue, or stated directly by the user), apply [references/research-framework.md#zero-sales-priority-mode](references/research-framework.md#zero-sales-priority-mode) for the rest of the run — it changes how Individuals are weighted and what the seven-day plan should lead with. This applies to any product category, not a specific one.
 
 ### 2. Build a public-signal search plan
 

@@ -40,6 +40,34 @@ At least one of `individuals`, `segments`, `companies` (each an array, 0-20 item
 | `search_queries_used` | array of strings | Every query issued during research |
 | `sources_consulted` | array of strings | Every source URL or platform visited |
 | `competitive_context` | object | Competitor landscape |
+| `growth_playbook` | object | Underserved-niche / creator-UGC growth angle — see schema below. Category-agnostic; omit entirely if you have nothing evidence-adjacent to say, don't fill it with generic creator-economy filler just to populate the section. |
+
+### Growth playbook schema (optional)
+
+Use this only when the research surfaced a real "high-usage, low public-visibility" pattern worth calling out — not as a default section for every report. It renders as a section titled "The invisible-user play," omitted entirely if `niches`, `agents`, and `creator_program` are all empty.
+
+```json
+{
+  "thesis": "string — 1-2 sentences on why an underserved/silent-usage niche is a growth opportunity for this specific product",
+  "niches": [
+    {
+      "name": "string — the niche or user group",
+      "why_silent": "string — why this niche uses the product but doesn't post about it publicly",
+      "signal": "string — evidence from this run's research supporting the niche, not a generic claim"
+    }
+  ],
+  "creator_program": {
+    "b2c_cpm": "string — short figure, e.g. '~$5', not a full sentence",
+    "b2b_cpm": "string — short figure, e.g. '~$15-25', not a full sentence",
+    "angle": "string — the concrete creator-outreach approach for this product"
+  },
+  "agents": [
+    { "name": "string — short agent name", "job": "string — one-line description of what it automates" }
+  ]
+}
+```
+
+Keep `b2c_cpm`/`b2b_cpm` to bare figures — the report renders them as large bold numbers, and a full parenthetical sentence there breaks the layout. Put explanation in `angle` instead. Flag in `limits` that any CPM/economics figures are planning estimates, not sourced data, unless they were actually verified.
 
 ### Prospect validation rules
 
@@ -87,12 +115,13 @@ The HTML report renders these sections in order:
 5. **Segments** — "Markets to target": each with pain pattern, content angle, keywords, channels, evidence, and 4-dimension breakdown
 6. **Companies** — "Partners to pitch": each with gap/trigger, execution path, contact path, BD angle, evidence, and 4-dimension breakdown
 7. **Repeated patterns** — signals appearing across multiple prospects of any type
-8. **Competitive context** — top competitors, switching barriers, differentiation (if provided)
-9. **Seven-day outreach plan** — manual validation sequence
-10. **Research audit** — queries issued, sources consulted, methodology (if provided)
-11. **Limits** — missing evidence and assumptions
+8. **Growth playbook** — "The invisible-user play": underserved niches, creator-UGC economics, automation agents (if `growth_playbook` provided)
+9. **Competitive context** — top competitors, switching barriers, differentiation (if provided)
+10. **Seven-day outreach plan** — manual validation sequence
+11. **Research audit** — queries issued, sources consulted, methodology (if provided)
+12. **Limits** — missing evidence and assumptions
 
-Sections 4-6 are omitted entirely when their array is empty or absent — the report never shows an empty "Companies" section with a placeholder card.
+Sections 4-6 are omitted entirely when their array is empty or absent — the report never shows an empty "Companies" section with a placeholder card. Section 8 is omitted entirely when `growth_playbook` is absent or all of its sub-fields are empty.
 
 ## Error handling
 
