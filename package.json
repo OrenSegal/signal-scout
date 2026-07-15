@@ -1,9 +1,9 @@
 {
   "name": "signal-scout",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Turns a startup URL or product description into an evidence-backed shortlist of first customers, market segments, and companies worth pitching — using public signals only.",
   "bin": {
-    "signal-scout": "./bin/install.js"
+    "signal-scout": "bin/install.js"
   },
   "files": [
     "bin",
@@ -25,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/OrenSegal/signal-scout.git"
+    "url": "git+https://github.com/OrenSegal/signal-scout.git"
   },
   "homepage": "https://github.com/OrenSegal/signal-scout",
   "engines": {
