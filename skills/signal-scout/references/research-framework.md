@@ -62,6 +62,16 @@ Useful public sources include:
 
 Avoid private groups, gated communities, data brokers, scraped contact databases, and sources that prohibit access.
 
+**Reddit needs a workaround, not a skip** (confirmed 2026-07-15): `reddit.com`/`old.reddit.com`/`api.reddit.com` are all unreachable through the direct fetch tool, and `site:reddit.com`-scoped web searches return zero indexed links — when that happens, don't let the search tool's own generic summary stand in as evidence, since it produces plausible-sounding but unsourced filler text with no real citation behind it. A raw HTTP request confirms Reddit itself 403s automated fetches from this environment; it isn't an artifact of one tool.
+
+**Working discovery path:** fetch `https://html.duckduckgo.com/html/?q=site%3Areddit.com+"<your query>"` (the plain-HTML DDG endpoint, not duckduckgo.com/html/ which just redirects there) with the fetch tool. It is not reddit.com, isn't bot-walled, and returns real reddit.com thread URLs with titles and paraphrased snippets — genuine discovery, not fabrication. What it can't do is get you the full page: reddit.com itself still 403s on fetch, so you cannot read the complete thread the way you can for every other source type.
+
+Because of that gap, a reddit.com source found this way stays **snippet-sourced, not fully verified** — treat it as a lower-confidence tier, not equivalent to a source you actually opened and read:
+- Only cite `evidence` text that the DDG snippet itself actually contains — never extrapolate beyond it into invented detail.
+- Note the limitation explicitly in that prospect's `caution` field or the report's `limits` array (e.g. "Reddit thread confirmed via search snippet only; full page unreachable in this environment").
+- `scripts/verify_sources.py` treats reddit.com 403/429 as `REDDIT_BLOCKED` (not a dead-link failure) — but that only confirms the link isn't broken, not that the snippet evidence is accurate, so the manual snippet-only caveat above still applies.
+- If a stronger source exists for the same signal (HN, Indie Hackers, G2, GitHub issue, a public professional post), prefer it as the primary citation and use the Reddit thread as corroboration only.
+
 ### Decision-maker mapping
 
 For each qualified prospect, identify:
@@ -156,6 +166,16 @@ An old explicit request can still be relevant, but reduce timing and label the d
 - **Trigger present:** a current business event makes the product relevant.
 - **Potential fit:** ICP match with incomplete evidence; keep outside the primary shortlist.
 
+## Zero-sales priority mode
+
+Apply this whenever the product brief indicates zero paying customers yet (pre-launch, pre-revenue, or the user states outright they haven't made a sale). This is a stage-based override, not a vertical-specific pack — it applies the same way regardless of product category. The goal changes: not building a GTM engine, but landing the first repeatable proof that a stranger will pay.
+
+- **Weight Individuals above Segments and Companies.** A Segment content play or a Company partnership takes weeks to convert; a well-matched Individual with a current public pain signal is the fastest path to a first conversation and first sale. Don't let a report end up all-Segment/Company when reachable Individuals exist — actively search for them even if the product's category tends toward Segment classification.
+- **Lower the reachability bar deliberately, but not the evidence bar.** At zero sales, a "Problem aware" Individual with a real reply channel is worth pursuing even at a moderate overall score (60-70) if pain and fit are both strong — timing and reachability matter more than a marginal evidence-quality gap.
+- **The seven-day plan must name a first individual conversation, not a channel to build.** "Publish comparison content" or "apply to a partner program" are Segment/Company moves with multi-week payoff; they belong in week 2+, not day 1. Days 1-3 should be: identify the single strongest Individual, draft the opener, and have the user send it themselves.
+- **Say so explicitly in the verdict.** If the product has zero sales, state that plainly and frame the whole report around "who is the first person we can close," not "what is our positioning." A verdict that reads like an already-scaled GTM memo is miscalibrated for a zero-sales product.
+- **Don't override honesty to force this.** If no reachable Individual genuinely exists in the research (common for enterprise-only or heavily regulated products), say so and default to the strongest Company as the fastest path to a first logo instead of inventing an Individual that isn't there.
+
 ## Next-action rules, by type
 
 ### Individual — outreach opener
@@ -175,7 +195,7 @@ Also draft 2-3 follow-up messages for the outreach companion skill. Each follow-
 
 A segment isn't a message target, it's a content/GTM brief. For each segment, decide whether the angle is **searchable** (captures existing demand — someone is actively typing "[competitor] alternative" or "[pain] tool") or **shareable** (creates demand — a novel insight or data point worth spreading), or both, and write accordingly:
 
-- **Searchable angle:** name the exact query pattern (e.g. "Cooklist alternative," "GLP-1 tracking app"), the buyer-journey stage it matches (awareness → "what is"/"how to"; consideration → "best"/"vs"/"alternatives"; decision → "pricing"/"reviews"), and the content type that fits (comparison page, use-case page, template).
+- **Searchable angle:** name the exact query pattern (e.g. "[competitor] alternative," "[category] tracking tool"), the buyer-journey stage it matches (awareness → "what is"/"how to"; consideration → "best"/"vs"/"alternatives"; decision → "pricing"/"reviews"), and the content type that fits (comparison page, use-case page, template).
 - **Shareable angle:** name the counterintuitive insight or original data point this segment's pain reveals, and why it's worth spreading beyond the immediate audience.
 
 List 2-4 target keywords in the segment's own language (not your product's jargon), and the channels where this audience actually spends time (SEO/blog, ASO, a specific subreddit, YouTube comparisons). Cite 1-3 proof points — evidence-backed claims, not invented statistics.
@@ -184,7 +204,7 @@ List 2-4 target keywords in the segment's own language (not your product's jargo
 
 A company isn't a drip-sequence target, it's a partnership pitch. For each company:
 
-- Name the **combined value proposition** — what does this unlock that neither side has alone? (e.g., "our pantry-recognition layer plus their existing GLP-1 coaching loop closes the one input that's still manual.")
+- Name the **combined value proposition** — what does this unlock that neither side has alone? (e.g., "our recognition/automation layer plus their existing distribution closes the one input that's still manual.")
 - Name the **execution path** honestly: a self-serve program (lowest friction, apply directly), a known partnerships function (warm BD, find the public partnerships/business-development contact), or cold BD into an org with no visible partner motion (state this plainly — it's a longer shot, not a warm lead).
 - Write the pitch itself as a single, specific ask under 90 words — not a generic "let's explore synergies." State the one thing you want them to do next (a self-serve signup, a specific intro request, a named program application).
 - Use only the public contact path (developer platform docs, partnerships page, published BD contact). Never suggest emailing a named executive's personal or scraped address, and never suggest cold-emailing an assistant or gatekeeper role.

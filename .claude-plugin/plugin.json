@@ -1,7 +1,7 @@
 {
   "name": "signal-scout",
   "description": "Turns a startup URL or product description into an evidence-backed shortlist of first customers, market segments, and companies worth pitching — using public signals only.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Oren Segal"
   },

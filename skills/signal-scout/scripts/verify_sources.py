@@ -27,6 +27,12 @@ import urllib.request
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
+
+
+def is_reddit(url: str) -> bool:
+    host = urlparse(url).netloc.lower()
+    return host == "reddit.com" or host.endswith(".reddit.com")
 
 
 class _TextExtractor(HTMLParser):
@@ -100,6 +106,7 @@ def main() -> None:
     results: list[tuple[str, str, str, str, float]] = []
     broken = 0
     weak = 0
+    reddit_blocked = 0
 
     for kind, item in iter_prospects(data):
         name = str(item.get("name", "(unnamed)"))
@@ -109,6 +116,14 @@ def main() -> None:
             broken += 1
             continue
         status, page_text = fetch_text(url, args.timeout)
+        if status in (403, 429) and is_reddit(url):
+            # Reddit blocks automated fetches (403/429) even for real, live threads —
+            # this is a platform anti-bot wall, not evidence the link is dead. Don't
+            # fail the run over it; the agent should trust the discovery-search
+            # snippet that surfaced this URL and note the gap in `limits` instead.
+            results.append((kind, name, url, "REDDIT_BLOCKED (unverifiable, not dead)", 0.0))
+            reddit_blocked += 1
+            continue
         if status is None or status >= 400:
             results.append((kind, name, url, f"UNREACHABLE ({status})", 0.0))
             broken += 1
@@ -124,9 +139,14 @@ def main() -> None:
         print(f"{kind:<10} {name[:28]:<28} {flag:<16} {ratio:<6} {url}")
 
     total = len(results)
-    print(f"\n{total} sources checked — {broken} unreachable, {weak} low-evidence-match.")
+    print(
+        f"\n{total} sources checked — {broken} unreachable, {weak} low-evidence-match, "
+        f"{reddit_blocked} reddit-blocked (unverifiable, not necessarily dead)."
+    )
     if broken or weak:
         print("Review flagged prospects before generating the report: drop, re-verify against the live page, or note the gap in `limits`.")
+    if reddit_blocked:
+        print("REDDIT_BLOCKED entries: keep only if the evidence was drawn from a real discovery-search snippet, and disclose the unverified status in `limits`.")
     if broken:
         sys.exit(1)
 
