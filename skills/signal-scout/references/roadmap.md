@@ -53,3 +53,22 @@ uniform across signal types; if outcome data clearly shows one signal type
 decays slower or faster than the schedule assumes (e.g. hiring posts staying
 relevant longer than forum complaints), propose editing that section — but
 only once outcome data justifies it, not speculatively.
+
+## 6. Repeat-usage tracking — shipped, founder-facing only
+
+`scripts/usage_stats.py` reads the `outputs/<slug>/analysis-<date>.json`
+storage convention (item 3's prerequisite) and reports how many products get
+re-run, how often, and the average gap — entirely local, no telemetry. This
+is not part of the agent workflow; it's how the founder validates the
+watch-mode subscription hypothesis (see [`../../../MONETIZATION.md`](../../../MONETIZATION.md))
+before pricing anything. Don't run this as part of a research session — it's
+a separate, manually-invoked check.
+
+## 7. MCP server (B2A distribution) — v0 scaffold, not yet monetized
+
+`mcp-server/` wraps the research workflow as a callable tool
+(`find_first_customers`) for other agents to call directly, instead of only
+a human invoking the skill inside Claude Code. See `mcp-server/README.md`
+for setup and what's tested vs. not, and `../../../MONETIZATION.md` for the
+distribution and pricing plan. No payment provider is wired in yet — calls
+are metered locally to `usage.jsonl` only.
