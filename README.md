@@ -124,6 +124,10 @@ See [`skills/signal-scout/references/report-artifact.md`](skills/signal-scout/re
 
 signal-scout finds and scores prospects — it doesn't write the outreach itself. Pair it with [signal-outreach](https://github.com/OrenSegal/first-to-first-sale), which takes a signal-scout report and produces the right next action per type: an outreach sequence for an Individual, a content/GTM brief for a Segment, or a BD pitch one-pager for a Company.
 
+## Calling it from another agent (MCP server)
+
+[`mcp-server/`](mcp-server/) wraps the research workflow as a callable tool for other agents, not just for a human running Claude Code — see [`mcp-server/README.md`](mcp-server/README.md) for setup and what's tested vs. not.
+
 ## Dependencies
 
 - Python 3.10+ (stdlib only — no pip install required) for the report generator

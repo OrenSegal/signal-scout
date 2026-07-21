@@ -5,3 +5,8 @@ __pycache__/
 *.pyc
 outputs/
 BUSINESS.md
+MONETIZATION.md
+backshift/
+venv/
+.venv/
+mcp-server/usage.jsonl
