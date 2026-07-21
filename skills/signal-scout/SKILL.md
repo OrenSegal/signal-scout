@@ -1,4 +1,8 @@
-# Skill: signal-scout
+---
+name: signal-scout
+description: Turn a startup URL or product description into an evidence-backed, source-verified shortlist of first customers (people to message), market segments (audiences to target with content), and companies (partners to pitch) — using public signals only. Use when the user wants to find early customers, validate demand, research prospects, or plan first outreach for a product.
+license: MIT
+---
 
 # Signal Scout
 
@@ -10,15 +14,15 @@ After delivering a report, check [references/roadmap.md](references/roadmap.md) 
 
 ## Research Tools
 
-This skill uses the following Claude Code / OpenCode tools:
+This skill is host-agnostic — it runs anywhere an agent has these capabilities (Claude Code, Claude Cowork, OpenCode, Codex, or any agentskills-compatible host). Map each capability to whatever your environment names it:
 
-- **`websearch`** — search the web for public pain signals, demand signals, and timing signals across forums, social posts, reviews, GitHub issues, and company pages.
-- **`webfetch`** — fetch specific URLs found during research to read full pages, extract evidence, and verify claims.
-- **`playwright_browser_navigate`** / **`playwright_browser_snapshot`** — for interactive browsing when webfetch cannot reach gated content (use sparingly; respect paywalls and login walls).
-- **`github_search_code`** / **`github_search_issues`** / **`github_get_file_contents`** — for analyzing public repositories, issues, feature requests, and project activity.
-- **`bash`** — to run `scripts/generate_report.py` for the final HTML report.
+- **Web search** — find public pain, demand, and timing signals across forums, social posts, reviews, GitHub issues, and company pages.
+- **Web fetch** — open specific URLs found during research to read full pages, extract evidence, and verify claims.
+- **Browser automation** (if available) — for content a plain fetch cannot render (use sparingly; respect paywalls and login walls).
+- **GitHub search** (if available) — public repositories, issues, feature requests, and project activity.
+- **Shell** — to run the Python scripts in `scripts/` (stdlib only, Python 3.10+).
 
-Use `Task` agents for parallel research when multiple query buckets need simultaneous coverage.
+If your host supports subagents/parallel tasks, use them to cover multiple query buckets simultaneously; otherwise run the buckets sequentially — the workflow does not depend on parallelism.
 
 ## Three prospect types — classify before you score
 
@@ -36,157 +40,21 @@ Log every classification call that wasn't obvious in the `limits` array.
 
 ## Structured Output
 
-The skill produces a JSON artifact that feeds the report generator. Every field below is required unless marked optional. The agent must populate this JSON before calling the report script.
+The skill produces a JSON artifact (`analysis.json`) that feeds the report generator. The full field-by-field schema lives in [references/report-artifact.md](references/report-artifact.md) — read it before drafting the JSON. The shape in brief:
 
-```json
-{
-  "title": "string — short product name",
-  "product": "string — one-line product description",
-  "product_url": "string — product URL",
-  "target_customer": "string — primary ICP description",
-  "adjacent_icp": "string — secondary ICP (optional)",
-  "search_scope": "string — e.g. 'Public English-language sources, last 12 months'",
-  "generated_at": "string — ISO date YYYY-MM-DD",
-  "methodology": "string — 1-2 sentence summary of research approach",
-  "search_queries_used": ["string — each query issued during research"],
-  "sources_consulted": ["string — each source URL or platform visited"],
-  "verdict": "string — whether the startup has reachable early-customer signals",
-  "individuals": ["See individual schema below"],
-  "segments": ["See segment schema below"],
-  "companies": ["See company schema below"],
-  "patterns": ["See pattern schema below"],
-  "outreach_plan": "See outreach plan schema below",
-  "competitive_context": "See competitive context schema below (optional)",
-  "limits": ["string — missing evidence, assumptions, and classification calls"]
-}
-```
+- **Top level:** `title`, `product`, `product_url`, `target_customer`, `search_scope`, `generated_at`, `methodology`, `search_queries_used`, `sources_consulted`, `verdict`, `outreach_plan`, `limits`, plus optional `adjacent_icp`, `competitive_context`, `patterns`. At least one of `individuals` / `segments` / `companies` must be non-empty; omit an array entirely rather than including it empty.
+- **Every prospect (all three types):** `name`, `stage` (High intent | Problem aware | Trigger present | Potential fit), `score` 0-100 computed from `dimensions` (0-5 each), `pain_signal`, `evidence` (text actually on the source page — quoted, not summarized), `why_fit`, `why_now`, `source_title`, `source_url`, `source_type`, `signal_date`, `caution`.
+- **Individual adds:** `suggested_channel`, `opener` (<90 words, omit — never "N/A" — if no public channel exists), `follow_up_sequence`; dimensions are pain_strength, product_fit, timing, reachability, evidence_quality.
+- **Segment adds:** `content_angle`, `target_keywords`, `suggested_channels`, `proof_points`; dimensions drop reachability (an audience isn't reachable).
+- **Company adds:** `role`, `execution_path` (Self-serve program | Warm BD | Cold BD), `contact_path` (public channel only), `bd_angle` (<90 words), `what_to_propose`; dimensions are strategic_fit, timing, execution_ease, evidence_quality.
 
-At least one of `individuals`, `segments`, `companies` must be non-empty. Omit an array entirely rather than including it empty.
+**Client-deliverable sections (optional — include when the report is a deliverable someone else will execute from, e.g. an agency's client or a team; skip for a founder's own quick run):**
 
-### Individual schema
+- `executive_summary` — overview + key findings + Monday-morning next steps. **Synthesis only**: every statement must trace to a verified prospect's fields; it may introduce no new external claims.
+- Company `tier` (1/2/3) + `tier_rationale` — groups the Companies section into an account plan (pursue now / nurture / monitor). Tiering rubric: research-framework.md "Account tiering".
+- `competitive_context.battlecard` — per-competitor entries (claim, quoted evidence, source_url, counter_angle). **These are new factual claims and get verified like prospects**; a failed entry is dropped from the report, and entries no prospect corroborates are badged Single-source.
 
-```json
-{
-  "name": "string — real name or stable public handle",
-  "stage": "string — High intent | Problem aware | Trigger present | Potential fit",
-  "score": "number 0-100",
-  "pain_signal": "string — the specific public pain or demand signal",
-  "evidence": "string — what was observed and where",
-  "why_fit": "string — why the product solves their stated problem",
-  "why_now": "string — what timing trigger makes this relevant today",
-  "source_title": "string — title of the source page or post",
-  "source_url": "string — valid URL to the public source",
-  "source_type": "string — Forum | Social post | Review | GitHub issue | Company page | Changelog | Job post | Directory | Other",
-  "signal_date": "string — publication date if visible, else 'Date unavailable'",
-  "suggested_channel": "string — recommended outreach channel, or 'No public reply/DM channel exists' if none",
-  "opener": "string — suggested first message under 90 words, or omit if no channel exists",
-  "follow_up_sequence": ["string — 2-3 follow-up messages for the outreach companion skill"],
-  "caution": "string — risk or caveat before outreach",
-  "competitor_mentioned": "string — competitor they currently use or mentioned (optional)",
-  "dimensions": {
-    "pain_strength": "number 0-5",
-    "product_fit": "number 0-5",
-    "timing": "number 0-5",
-    "reachability": "number 0-5",
-    "evidence_quality": "number 0-5"
-  }
-}
-```
-
-If `suggested_channel` is "No public reply/DM channel exists," omit `opener` and `follow_up_sequence` rather than writing "N/A" — the report generator treats a missing field as not applicable, not a filled-but-empty one.
-
-### Segment schema
-
-```json
-{
-  "name": "string — short segment name, e.g. '[Competitor] comparison-shoppers'",
-  "stage": "string — High intent | Problem aware | Trigger present | Potential fit",
-  "score": "number 0-100",
-  "pain_signal": "string — the repeated pain or demand pattern",
-  "evidence": "string — what was observed and where (aggregate, not one post)",
-  "why_fit": "string — why the product solves this pattern's job-to-be-done",
-  "why_now": "string — what makes this pattern current",
-  "source_title": "string",
-  "source_url": "string",
-  "source_type": "string",
-  "signal_date": "string",
-  "content_angle": "string — the searchable or shareable angle to take (see references/research-framework.md)",
-  "target_keywords": ["string — search terms this segment actually uses"],
-  "suggested_channels": ["string — e.g. SEO/blog, ASO, Reddit reply-when-relevant, YouTube comparison"],
-  "proof_points": ["string — evidence-backed claims to use in the content"],
-  "caution": "string",
-  "competitor_mentioned": "string (optional)",
-  "dimensions": {
-    "pain_strength": "number 0-5",
-    "product_fit": "number 0-5",
-    "timing": "number 0-5",
-    "evidence_quality": "number 0-5"
-  }
-}
-```
-
-### Company schema
-
-```json
-{
-  "name": "string — organization name",
-  "role": "string — Potential customer account | Integration/distribution partner | Expansion partner",
-  "stage": "string — High intent | Problem aware | Trigger present | Potential fit",
-  "score": "number 0-100",
-  "pain_signal": "string — the product gap or business trigger",
-  "evidence": "string — what was observed and where",
-  "why_fit": "string — the combined value proposition: what this unlocks for both sides",
-  "why_now": "string — the trigger event or timing signal",
-  "source_title": "string",
-  "source_url": "string",
-  "source_type": "string",
-  "signal_date": "string",
-  "execution_path": "string — Self-serve program | Warm BD | Cold BD",
-  "contact_path": "string — the public channel (e.g. 'self-serve developer platform signup,' 'corporate partnerships page') — never a scraped personal contact",
-  "bd_angle": "string — suggested opening pitch, under 90 words",
-  "what_to_propose": "string — the concrete first ask",
-  "caution": "string",
-  "dimensions": {
-    "strategic_fit": "number 0-5",
-    "timing": "number 0-5",
-    "execution_ease": "number 0-5",
-    "evidence_quality": "number 0-5"
-  }
-}
-```
-
-### Pattern schema
-
-```json
-{
-  "title": "string — short pattern name",
-  "count": "number — how many prospects (any type) show this pattern",
-  "insight": "string — what this means for positioning or outreach"
-}
-```
-
-### Outreach plan schema
-
-```json
-{
-  "angle": "string — the core outreach strategy",
-  "first_step": "string — what to do first",
-  "follow_up": "string — what to do after initial contact",
-  "success": "string — what success looks like in 7 days",
-  "channels_to_prioritize": ["string — ranked list of outreach channels"],
-  "personalization_notes": "string — how to personalize beyond templates"
-}
-```
-
-### Competitive context schema
-
-```json
-{
-  "top_competitors": ["string — 3-5 competitors the prospects likely use"],
-  "switching_barriers": "string — what makes switching hard",
-  "differentiation_angle": "string — the clearest reason to choose this product instead"
-}
-```
+You don't need to hold the full schema in memory: draft the JSON, then run `python3 <skill_dir>/scripts/finalize.py --validate-only analysis.json` — it machine-checks every required field, dimension set, stage value, URL shape, and score-vs-dimensions arithmetic, and prints exactly what to fix.
 
 ## Workflow
 
@@ -272,22 +140,46 @@ Lead with the most actionable evidence. Use this order:
 
 Create a standalone HTML report unless the user explicitly requests chat-only output:
 
-1. Write structured JSON following the schema above and in [references/report-artifact.md](references/report-artifact.md).
-2. Save the JSON to a temp file: `analysis.json` in the workspace.
-3. Run `python3 <skill_dir>/scripts/verify_sources.py analysis.json` and review the output. It fetches every `source_url` and fuzzy-matches the cited `evidence` against the live page — this catches dead links and evidence paraphrased from a search snippet that self-graded `evidence_quality` scores miss. For any `UNREACHABLE`/`INVALID_URL` result, drop the prospect or find a working source before continuing. For `LOW_MATCH`, re-read the source and either tighten the `evidence` quote or note the mismatch in `limits` — a low match isn't always wrong (paraphrase, page redesign), but it must not pass silently.
-4. Run `python3 <skill_dir>/scripts/generate_report.py analysis.json outputs/signal-scout-report.html` (use the absolute path to the skill's scripts directory).
-5. Verify every section rendered, source links resolve, scores and dimensions match the type they belong to, and no card shows an empty/"N/A" field.
-6. Return a clickable absolute file link in the final response.
+1. Write `analysis.json` following [references/report-artifact.md](references/report-artifact.md). While drafting, iterate with `python3 <skill_dir>/scripts/finalize.py --validate-only analysis.json` until it passes.
+2. Run the one-shot pipeline:
 
-**Error recovery:** If the report script fails, read the error message, fix the JSON (most common issue: missing required fields, invalid URLs, or a prospect in the wrong type array), and retry once. If it fails again, output the JSON directly and note the script issue.
+   ```bash
+   python3 <skill_dir>/scripts/finalize.py analysis.json --out outputs/<slug>/signal-scout-report.html
+   ```
+
+   One command runs, in order: schema validation → source verification (`verify_sources.py`, annotating tiers in place and writing `handoff.json` next to the input) → HTML report (`generate_report.py`, with New / Seen Nx / Resurfacing badges auto-detected from sibling snapshots and `outcomes.jsonl`) → `prospects.csv` for CRM import → the cross-run diff when prior snapshots exist. It prints a condensed summary: only prospects needing action, tier counts, and output paths.
+
+3. Act on the verification tiers it reports. Verification fetches every `source_url` and checks the cited `evidence` is actually contained in the live page — the one check that catches a claim the research invented, which no self-graded `evidence_quality` score ever will (the model scoring the evidence is the model that wrote it):
+
+   - **Verified** — substantially quoted from the page. Ship it.
+   - **Paraphrased** — supported but reworded. Tighten `evidence` to text actually on the page, or note the gap in `limits`. Does not fail the run.
+   - **Not on page** — the source loaded, was readable, and the claim is not in it. **Treat as fabricated until proven otherwise.** Drop the prospect or replace `evidence` with text really there. Never ship one.
+   - **Broken source** — unreachable or invalid URL. Drop the prospect or find a working source.
+   - **Snippet-only** — the platform blocked the fetch (e.g. Reddit, or a 429). Keep only if the evidence came from a real discovery-search snippet; disclose it in `limits`.
+   - **Unverified** — too little page text to check (JS-rendered or gated). A fetch failure, not a fabrication signal; verify by hand or note it.
+
+   When a live page can't be read (dead link, bot wall like Reddit's, or a JS-rendered shell with too little text), verification automatically retries against the Wayback Machine's archived copy before assigning a failing tier — the verification note discloses when a claim was checked against the archive. JS-rendered pages are also mined for meta descriptions and JSON-LD before being declared unreadable.
+
+   The pipeline exits non-zero while any prospect is **Not on page** or **Broken source** — fix the JSON and re-run until it passes. It also stamps every prospect with `verified_at` (so a report opened weeks later shows its age) and flags any Individual whose `opener` invents specifics absent from its own `evidence` with `opener_grounding_note` — a caution to tighten before sending, not a failing tier.
+4. Spot-check the HTML: sections rendered, badges present, no card with an empty/"N/A" field. Return a clickable absolute file link in the final response.
+
+**Error recovery:** the pipeline's validation output names each problem (`missing field`, wrong dimension set, score/dimension mismatch, invalid URL). Fix the JSON and retry. If the report step itself fails twice, output the JSON directly and note the script issue. The underlying scripts (`verify_sources.py`, `generate_report.py`, `diff_reports.py`) remain individually runnable when you need just one step.
 
 **Caching:** If the product URL was already analyzed in this session and the user asks for a refresh, re-run only the search phase. If they ask for the same product, reuse cached research and re-score only if new signals appeared.
 
 **Storage convention (enables steps 7-8 below):** save each run's JSON at `outputs/<product-slug>/analysis-<YYYY-MM-DD>.json` (slug the product name, e.g. `outputs/acme-crm/analysis-2026-07-14.json`) instead of a single throwaway `analysis.json`, whenever the user is likely to revisit this product. This is what makes `diff_reports.py` and `recalibrate.py` useful later — a one-off `analysis.json` in a temp dir works fine for a single-shot ask, but don't use it for a product the user is actively working.
 
-### 7. Watch mode (offer, don't assume)
+### 7. Watch mode (offer, don't assume) — and any re-run, opt-in or not
 
-If the user is actively working a product rather than doing a one-off check, offer to schedule a recurring re-run via the `schedule` skill (e.g. weekly). Each scheduled run should: re-run only the search phase (per the caching rule above) against the same product, save the new snapshot per the storage convention, then run `python3 <skill_dir>/scripts/diff_reports.py outputs/<slug>/analysis-<previous-date>.json outputs/<slug>/analysis-<current-date>.json` and report only the new prospects, dropped prospects, and growing patterns it prints — not the full report again. This needs explicit user opt-in since it creates a standing scheduled job.
+Before finalizing a report for a product that already has saved snapshots under the storage convention above — whether this is a scheduled watch-mode run or just the user asking to re-check something they researched before — run `diff_reports.py` against *all* of that product's saved snapshots, not only the immediately-previous one:
+
+```bash
+python3 <skill_dir>/scripts/diff_reports.py outputs/<slug>/analysis-*.json --outcomes outputs/<slug>/outcomes.jsonl
+```
+
+Pass every `analysis-*.json` for the product (order doesn't matter — it sorts by each file's `generated_at`), and `--outcomes` if `outputs/<slug>/outcomes.jsonl` exists. This distinguishes three things, not two: prospects genuinely never seen before (**new**), prospects that surfaced before and are surfacing again (**recurring** — flagged loudly if they already have a logged outcome, since resurfacing a `no_reply` or `not_pursued` prospect without a new angle just repeats a decision already made), and prospects that were in the last snapshot but didn't come back this time (**dropped**). Report only this — new prospects, recurring-with-an-outcome-flag, dropped prospects, growing patterns — not the full report again.
+
+For a scheduled recurring run, offer to set this up via the `schedule` skill (e.g. weekly) — that needs explicit user opt-in since it creates a standing job. For an ad-hoc "check this again" ask outside of watch mode, just run the diff before reporting back; no opt-in needed since nothing new is being scheduled.
 
 ### 8. Close the loop with outcomes (when available)
 
@@ -296,10 +188,21 @@ signal-scout's scores are self-graded — there is no ground truth until someone
 ```bash
 python3 <skill_dir>/scripts/log_outcome.py outputs/<slug>/outcomes.jsonl \
   --name "<prospect name>" --type individual --source-type "Forum" \
-  --query-bucket pain --score 82 --outcome replied --date <YYYY-MM-DD>
+  --query-bucket pain --score 82 --outcome replied --date <YYYY-MM-DD> \
+  --source-url "<prospect's source_url>"
 ```
 
-`--outcome` is one of `replied`, `no_reply`, `converted`, `not_pursued`. Do this opportunistically, not by asking the user to fill out a form — if they mention a reply or a conversion in passing, log it. On the *next* research run for the same product, step 2 already checks for this file and runs `recalibrate.py` automatically.
+`--outcome` is one of `replied`, `no_reply`, `converted`, `not_pursued`. Always pass `--source-url` when logging — it's what step 7's diff uses to tell apart two different prospects who happen to share a name, instead of merging their outcomes. Do this opportunistically, not by asking the user to fill out a form — if they mention a reply or a conversion in passing, log it. On the *next* research run for the same product, step 2 already checks for this file and runs `recalibrate.py` automatically.
+
+### 9. Portfolio mode (when the user runs multiple products)
+
+If the user has run signal-scout against more than one product (e.g. a founder or agency with several tools, each saved per the storage convention above), offer to cross-reference them:
+
+```bash
+python3 <skill_dir>/scripts/portfolio_merge.py "outputs/<slug-a>/analysis-*.json" "outputs/<slug-b>/analysis-*.json" --out outputs/portfolio-cross-refs.json
+```
+
+Each product argument may be a single file (as before) or a glob matching every snapshot saved for that product — cross-referencing then runs against that product's full cumulative history (reusing step 7's `diff_reports.py` accumulation), not just its latest run, so a prospect that dropped out of product A's most recent snapshot still surfaces if it's currently live in product B's. It groups prospects by exact `source_url` or normalized name and reports only those appearing in 2+ products — e.g. a person, community, or company relevant to more than one product, which is worth one shared outreach conversation instead of two separate ones. It does not re-score or judge fit across products; that comparison is left to whoever reads the output. This is opt-in and only useful once 2+ product reports exist.
 
 ## Modes
 
@@ -322,23 +225,20 @@ Use `standard` + `all` by default.
 
 ## Completeness Checklist
 
-Before delivering, verify every item:
+Machine-checked — `finalize.py` exiting zero already guarantees these; don't re-verify them by hand:
+required fields and dimension sets per type, stage values, score-vs-dimensions arithmetic, valid source URLs that resolve, no opener alongside "no channel exists," segment `content_angle` / company `execution_path` + `contact_path` present, verification run with zero **Not on page** / **Broken source**, report + CSV + handoff written.
+
+Judgment calls — verify these yourself before delivering:
 
 - [ ] Product brief is complete (product, buyer, job, trigger, alternatives, disqualifiers).
 - [ ] At least 3 search query buckets were used (explicit demand, pain, workaround, switching, timing).
 - [ ] Every prospect was classified as exactly one of Individual / Segment / Company, with non-obvious calls logged in `limits`.
-- [ ] Every prospect has a source URL that resolves.
-- [ ] Every prospect has a score with the dimension set matching its type (5 for Individual, 4 for Segment, 4 for Company).
-- [ ] No Individual card has an "N/A" opener — either a real opener or the field is omitted with a stated reason.
-- [ ] Every Segment has a content angle, keywords, and channels — not an outreach opener.
-- [ ] Every Company has an execution path, a public contact path, and a BD angle — not a 4-touch drip sequence.
 - [ ] Deduplication was performed (no repeat prospects, no person double-counted as their own company without cross-reference).
 - [ ] Patterns are backed by 2+ prospects each.
 - [ ] Competitive context identifies 3-5 real competitors.
-- [ ] Research audit logs queries and sources.
-- [ ] Limits array discloses all assumptions, missing evidence, and classification calls.
-- [ ] Report was generated and the file link works.
-- [ ] `scripts/verify_sources.py` was run and every `UNREACHABLE`/`INVALID_URL` result was resolved (prospect dropped or source fixed) before the final report.
+- [ ] Research audit logs queries and sources; limits array discloses all assumptions.
+- [ ] Any Individual flagged with `opener_grounding_note` had its opener tightened to what `evidence` actually supports before being reported as ready to send.
+- [ ] If handing off to signal-outreach or another consumer, used `handoff.json` rather than the raw `analysis.json`, so dropped-tier prospects don't carry forward.
 
 ## Quality bar
 
@@ -352,5 +252,4 @@ Before delivering, verify every item:
 - Name the competitors so the user can validate the landscape.
 - Never force a prospect into the wrong type just to keep one list tidy — a mis-typed prospect gets the wrong next action.
 
-Base directory for this skill: file:///Users/orensegal/Documents/GitHub/first-to-first-sale/signal-scout
-Relative paths in this skill (e.g., scripts/, references/) are relative to this base directory.
+Relative paths in this skill (e.g., `scripts/`, `references/`) are relative to wherever this skill is installed (e.g. `~/.agents/skills/signal-scout`). Resolve `<skill_dir>` against the actual install location, not a hardcoded path.

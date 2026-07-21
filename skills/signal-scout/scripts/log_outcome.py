@@ -12,13 +12,19 @@ Usage:
     # Log one outcome
     python3 log_outcome.py outcomes.jsonl --name "jdoe" --type individual \\
         --source-type "Forum" --query-bucket pain --score 82 \\
-        --outcome replied --date 2026-07-14
+        --outcome replied --date 2026-07-14 --source-url "https://..."
 
     # List everything logged so far
     python3 log_outcome.py outcomes.jsonl --list
 
 `--outcome` must be one of: replied, no_reply, converted, not_pursued.
 Appends one JSON line per call — safe to run repeatedly, never overwrites.
+
+Pass `--source-url` when you have it. `diff_reports.py --outcomes` matches
+resurfacing prospects back to logged outcomes by (name, source_url) when
+both are available, falling back to name only otherwise — so recording it
+tells "Alex Chen who posted about pricing" apart from "Alex Chen who posted
+about onboarding" instead of merging them into one name.
 """
 
 from __future__ import annotations
@@ -42,6 +48,7 @@ def main() -> None:
     parser.add_argument("--score", type=int, help="The score signal-scout assigned (0-100)")
     parser.add_argument("--outcome", choices=sorted(VALID_OUTCOMES))
     parser.add_argument("--date", help="ISO date the outcome was observed, e.g. 2026-07-14")
+    parser.add_argument("--source-url", default="", help="The prospect's source_url — disambiguates same-name prospects when diff_reports.py --outcomes matches against this log")
     parser.add_argument("--notes", default="")
     args = parser.parse_args()
 
@@ -75,6 +82,7 @@ def main() -> None:
         "score": args.score,
         "outcome": args.outcome,
         "date": args.date,
+        "source_url": args.source_url,
         "notes": args.notes,
     }
 

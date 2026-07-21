@@ -90,7 +90,7 @@ Not all signals are equal by age:
 - **Fresh (0-30 days):** Full timing score. Highest confidence.
 - **Recent (31-90 days):** Reduce timing by 1 point. Still relevant.
 - **Stale (91-180 days):** Reduce timing by 2 points. Label as "signal may be outdated."
-- **Old (180+ days):** Timing = 1 max. Include only if the pain is结构性 (structural) rather than event-driven.
+- **Old (180+ days):** Timing = 1 max. Include only if the pain is structural rather than event-driven.
 
 Always note the signal date in the prospect record.
 
@@ -187,6 +187,8 @@ Draft one opener using this shape:
 3. explain the product in one sentence
 4. ask one low-friction question
 
+The context in step 1 must be drawn from this prospect's own `evidence` field — not a fresh claim invented for the opener. `verify_sources.py` only checks `evidence` against the live page; an opener built from different material than what gets verified would ship unchecked next to a verified badge. This is also what keeps the opener from reading generic: it's tied to a specific confirmed detail, not a templated hook.
+
 Keep it under 90 words by default. Never claim the message was sent. Do not include private emails, phone numbers, personal addresses, family information, or sensitive traits. If no public reply/DM channel exists, state that and omit the opener — do not write a placeholder.
 
 Also draft 2-3 follow-up messages for the outreach companion skill. Each follow-up should add a new angle (insight, data point, or value offer) rather than repeating the opener.
@@ -202,7 +204,27 @@ List 2-4 target keywords in the segment's own language (not your product's jargo
 
 ### Company — BD pitch
 
-A company isn't a drip-sequence target, it's a partnership pitch. For each company:
+A company isn't a drip-sequence target, it's a partnership pitch. First name the **partner motion** — it determines the right first ask and who inside the org owns the decision:
+
+| Motion | The value exchanged | Right first ask | Typical owner |
+|---|---|---|---|
+| **Integration** | Their platform + your capability closes a workflow gap for shared users | Build against their public API/app store, then submit to their directory | Developer relations / platform team |
+| **Distribution / marketplace** | Their audience or listing surface, your product | Apply to the marketplace, affiliate, or app-store program | Partnerships / ecosystem team |
+| **Co-marketing** | Overlapping audiences, complementary products | One concrete joint asset (webinar, comparison guide, template pack) | Marketing |
+| **Reseller / agency** | They implement or resell for their clients | A pilot with one of their existing clients | Services / delivery lead |
+| **Customer account** | They have the pain themselves, at org scale | A pilot scoped to the team feeling the evidenced pain | The team named in the evidence |
+
+Pick one motion per company and tailor `what_to_propose` to it — a generic "let's partner" pitch that doesn't name the motion is the BD equivalent of an "N/A" opener.
+
+**Account tiering (optional, for client deliverables):** when the report is a deliverable someone will execute from, place each company in a tier and say why in `tier_rationale`. Tier is execution priority, not a restatement of the score:
+
+- **Tier 1 — pursue now:** strong fit *and* a low-friction path (self-serve program or warm BD) *and* a live trigger. Open these this week.
+- **Tier 2 — nurture:** real fit, but a slower path (cold BD) or a weaker trigger. Queue behind Tier 1.
+- **Tier 3 — monitor:** plausible fit with no live trigger. Name the trigger to watch for in the rationale.
+
+A high-scoring company with no partnerships function can be Tier 2; a mid-scoring one with an open self-serve program and a fresh launch can be Tier 1.
+
+For each company:
 
 - Name the **combined value proposition** — what does this unlock that neither side has alone? (e.g., "our recognition/automation layer plus their existing distribution closes the one input that's still manual.")
 - Name the **execution path** honestly: a self-serve program (lowest friction, apply directly), a known partnerships function (warm BD, find the public partnerships/business-development contact), or cold BD into an org with no visible partner motion (state this plainly — it's a longer shot, not a warm lead).
