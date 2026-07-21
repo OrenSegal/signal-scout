@@ -10,9 +10,199 @@ python3 scripts/generate_report.py analysis.json outputs/signal-scout-report.htm
 
 Return a clickable absolute file link in the final response. Keep the JSON in a work or temporary directory unless the user asks for raw data.
 
+If `analysis.json` lives alongside prior snapshots saved per the SKILL.md storage convention (`outputs/<slug>/analysis-<date>.json`), the generator auto-detects every sibling `analysis-*.json` (excluding the input itself) and a sibling `outcomes.jsonl`, then badges each prospect **New**, **Seen Nx**, or **Resurfacing** — see "Novelty fields" below. Override with `--history a.json b.json ...` (explicit list instead of auto-detection), `--no-history` (skip novelty entirely), or `--outcomes path.jsonl` (explicit outcomes file).
+
 ## JSON schema
 
-The full schema is defined in the main SKILL.md. This reference covers the required and optional fields, validation rules, and completeness scoring.
+This file is the schema authority — SKILL.md holds only a compact summary. Draft against this, then run `scripts/finalize.py --validate-only analysis.json` to machine-check it instead of re-reading these rules.
+
+### Top-level shape
+
+```json
+{
+  "title": "string — short product name",
+  "product": "string — one-line product description",
+  "product_url": "string — product URL",
+  "target_customer": "string — primary ICP description",
+  "adjacent_icp": "string — secondary ICP (optional)",
+  "search_scope": "string — e.g. 'Public English-language sources, last 12 months'",
+  "generated_at": "string — ISO date YYYY-MM-DD",
+  "methodology": "string — 1-2 sentence summary of research approach",
+  "search_queries_used": ["string — each query issued during research"],
+  "sources_consulted": ["string — each source URL or platform visited"],
+  "verdict": "string — whether the startup has reachable early-customer signals",
+  "individuals": ["see Individual schema"],
+  "segments": ["see Segment schema"],
+  "companies": ["see Company schema"],
+  "patterns": ["see Pattern schema"],
+  "outreach_plan": "see Outreach plan schema",
+  "competitive_context": "see Competitive context schema (optional)",
+  "limits": ["string — missing evidence, assumptions, and classification calls"]
+}
+```
+
+At least one of `individuals`, `segments`, `companies` must be non-empty. Omit an array entirely rather than including it empty.
+
+### Individual schema
+
+```json
+{
+  "name": "string — real name or stable public handle",
+  "stage": "string — High intent | Problem aware | Trigger present | Potential fit",
+  "score": "number 0-100",
+  "pain_signal": "string — the specific public pain or demand signal",
+  "evidence": "string — what was observed and where",
+  "why_fit": "string — why the product solves their stated problem",
+  "why_now": "string — what timing trigger makes this relevant today",
+  "source_title": "string — title of the source page or post",
+  "source_url": "string — valid URL to the public source",
+  "source_type": "string — Forum | Social post | Review | GitHub issue | Company page | Changelog | Job post | Directory | Other",
+  "signal_date": "string — publication date if visible, else 'Date unavailable'",
+  "suggested_channel": "string — recommended outreach channel, or 'No public reply/DM channel exists' if none",
+  "opener": "string — suggested first message under 90 words, or omit if no channel exists",
+  "follow_up_sequence": ["string — 2-3 follow-up messages for the outreach companion skill"],
+  "caution": "string — risk or caveat before outreach",
+  "competitor_mentioned": "string — competitor they currently use or mentioned (optional)",
+  "dimensions": {
+    "pain_strength": "number 0-5",
+    "product_fit": "number 0-5",
+    "timing": "number 0-5",
+    "reachability": "number 0-5",
+    "evidence_quality": "number 0-5"
+  }
+}
+```
+
+If `suggested_channel` is "No public reply/DM channel exists," omit `opener` and `follow_up_sequence` rather than writing "N/A" — the report generator treats a missing field as not applicable, not a filled-but-empty one.
+
+### Segment schema
+
+```json
+{
+  "name": "string — short segment name, e.g. '[Competitor] comparison-shoppers'",
+  "stage": "string — High intent | Problem aware | Trigger present | Potential fit",
+  "score": "number 0-100",
+  "pain_signal": "string — the repeated pain or demand pattern",
+  "evidence": "string — what was observed and where (aggregate, not one post)",
+  "why_fit": "string — why the product solves this pattern's job-to-be-done",
+  "why_now": "string — what makes this pattern current",
+  "source_title": "string",
+  "source_url": "string",
+  "source_type": "string",
+  "signal_date": "string",
+  "content_angle": "string — the searchable or shareable angle to take (see research-framework.md)",
+  "target_keywords": ["string — search terms this segment actually uses"],
+  "suggested_channels": ["string — e.g. SEO/blog, ASO, Reddit reply-when-relevant, YouTube comparison"],
+  "proof_points": ["string — evidence-backed claims to use in the content"],
+  "caution": "string",
+  "competitor_mentioned": "string (optional)",
+  "dimensions": {
+    "pain_strength": "number 0-5",
+    "product_fit": "number 0-5",
+    "timing": "number 0-5",
+    "evidence_quality": "number 0-5"
+  }
+}
+```
+
+### Company schema
+
+```json
+{
+  "name": "string — organization name",
+  "role": "string — Potential customer account | Integration/distribution partner | Expansion partner",
+  "stage": "string — High intent | Problem aware | Trigger present | Potential fit",
+  "score": "number 0-100",
+  "pain_signal": "string — the product gap or business trigger",
+  "evidence": "string — what was observed and where",
+  "why_fit": "string — the combined value proposition: what this unlocks for both sides",
+  "why_now": "string — the trigger event or timing signal",
+  "source_title": "string",
+  "source_url": "string",
+  "source_type": "string",
+  "signal_date": "string",
+  "execution_path": "string — Self-serve program | Warm BD | Cold BD",
+  "contact_path": "string — the public channel (e.g. 'self-serve developer platform signup,' 'corporate partnerships page') — never a scraped personal contact",
+  "bd_angle": "string — suggested opening pitch, under 90 words",
+  "what_to_propose": "string — the concrete first ask",
+  "caution": "string",
+  "dimensions": {
+    "strategic_fit": "number 0-5",
+    "timing": "number 0-5",
+    "execution_ease": "number 0-5",
+    "evidence_quality": "number 0-5"
+  }
+}
+```
+
+### Pattern schema
+
+```json
+{
+  "title": "string — short pattern name",
+  "count": "number — how many prospects (any type) show this pattern",
+  "insight": "string — what this means for positioning or outreach"
+}
+```
+
+### Outreach plan schema
+
+```json
+{
+  "angle": "string — the core outreach strategy",
+  "first_step": "string — what to do first",
+  "follow_up": "string — what to do after initial contact",
+  "success": "string — what success looks like in 7 days",
+  "channels_to_prioritize": ["string — ranked list of outreach channels"],
+  "personalization_notes": "string — how to personalize beyond templates"
+}
+```
+
+### Competitive context schema
+
+```json
+{
+  "top_competitors": ["string — 3-5 competitors the prospects likely use"],
+  "switching_barriers": "string — what makes switching hard",
+  "differentiation_angle": "string — the clearest reason to choose this product instead",
+  "battlecard": ["see Battlecard entry schema (optional)"]
+}
+```
+
+### Battlecard entry schema (optional)
+
+Each entry is a **new factual claim about a competitor and is verified exactly like a prospect** — `verify_sources.py` fetches `source_url` and checks `evidence` containment. A disqualified entry (Not on page / Broken source) is dropped from the report and handoff but does not fail the run. Entries are also cross-examined against the run's own prospects: `corroboration_count` counts prospects whose `competitor_mentioned` matches, and a zero-corroboration entry is badged **Single-source** on the report.
+
+```json
+{
+  "competitor": "string — competitor name",
+  "claim": "string — where their users complain, in one sentence",
+  "evidence": "string — text actually on the source page, quoted not summarized",
+  "source_title": "string",
+  "source_url": "string — valid URL; required, this claim gets verified",
+  "signal_date": "string (optional)",
+  "switching_barrier": "string — what keeps their users locked in (optional)",
+  "counter_angle": "string — the evidence-backed reason this product wins that complaint"
+}
+```
+
+`verification_tier` / `verification_note` / `verified_at` / `corroboration_count` / `corroboration_note` are set by `verify_sources.py`, never authored by hand.
+
+### Executive summary schema (optional)
+
+The client-facing "what we did, what we found, what to do Monday" block, rendered directly under the hero. **Synthesis only:** every statement must trace to a verified prospect's fields — this section introduces no new external claims and therefore carries no verification badge of its own. Omit it for a founder's own quick run; include it when the report is a deliverable someone else will read.
+
+```json
+{
+  "overview": "string — 2-3 sentences: scope, approach, and the verdict in plain language",
+  "key_findings": ["string — the 3-5 findings that change what the reader does next"],
+  "next_steps": ["string — concrete Monday-morning actions, most actionable first"]
+}
+```
+
+### Company account tiers (optional)
+
+Any company may carry `tier` (1, 2, or 3) and `tier_rationale` (required when `tier` is present). When at least one company is tiered, the report renders companies grouped as **Tier 1 — pursue now** / **Tier 2 — nurture** / **Tier 3 — monitor** (untiered companies fall into their own trailing group); with no tiers the flat section renders as before. Tier is an execution-priority judgment (see research-framework.md "Account tiering"), not a restatement of the score — a high-scoring company with a slow path can be Tier 2.
 
 ### Required top-level fields
 
@@ -83,6 +273,35 @@ Per type:
 - **Segment**: `dimensions` must include the 4 keys (`pain_strength`, `product_fit`, `timing`, `evidence_quality`), each 0-5. `content_angle` is required.
 - **Company**: `dimensions` must include the 4 keys (`strategic_fit`, `timing`, `execution_ease`, `evidence_quality`), each 0-5. `execution_path` and `contact_path` are required.
 
+These rules are also enforced in code by `scripts/signal_scout_core.py` (`validate_prospect`, `compute_score`) — import it rather than re-deriving the weights/rules if you're scripting against report JSON directly.
+
+### Verification fields (optional, set by `verify_sources.py`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `verification_tier` | string | One of `verified`, `snippet_only`, `low_match`, `unsupported`, `unverified`, `broken` — set by `scripts/verify_sources.py --annotate-out`, never authored by hand. |
+| `verification_note` | string | Human-readable detail (e.g. the containment scores, or why a source was unreachable). Empty string when `verification_tier` is `verified`. |
+| `verified_at` | string | ISO date (`YYYY-MM-DD`) the check ran, stamped unconditionally regardless of tier — a broken source was still checked at a point in time. `generate_report.py` renders it as a muted "· Nd ago" suffix on the verification badge once the report has been open a day or more, computed client-side against the viewer's own clock so a reopened static HTML file always shows its true age instead of looking permanently fresh. |
+| `opener_grounding_note` | string | Individual-only. Set when the prospect's `opener` references specifics not present in its own `evidence` — a softer, separate check from `verification_tier` (that compares evidence to the live page; this compares the opener to the evidence text, and tolerates paraphrase by design). Renders as an inline warning below the opener on the card. Does not fail `verify_sources.py`'s exit code or drop the prospect — it's a caution to tighten the message before sending, not a disqualification. |
+
+When present, `generate_report.py` renders a verification badge on the card (Verified / Snippet-only / Paraphrased / Not on page / Broken source) and includes a `verification` column in the CSV export. Absent entirely if `verify_sources.py` hasn't been run against the report yet — the report renders normally either way. `verified_at` and `opener_grounding_note` are HTML-only additions — neither appears in the CSV export.
+
+**`evidence` must be text that is actually on the page.** The verifier checks containment: it fetches `source_url` and looks for the evidence's word sequences and distinctive terms in the live page. Quote the source; don't summarise it. A summary written in your own words scores as `low_match` ("Paraphrased") at best, and a claim assembled from a search snippet without opening the page scores `unsupported` ("Not on page") and fails the run. This is deliberate — `unsupported` is the fabrication signal, and it is the only check in the pipeline that a self-graded `evidence_quality` rating cannot fake, because the model rating the evidence is the model that wrote it.
+
+### Novelty fields (optional, set by `generate_report.py`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `_novelty` | object | Added in-memory when history snapshots are available (auto-detected sibling `analysis-*.json` files, or passed via `--history`) — never authored by hand and never written back to `analysis.json`. Shape: `{"is_new": bool, "times_seen": int, "first_seen": "YYYY-MM-DD", "prior_outcome": "<outcome> on <date>"}`; the last three keys are present only when applicable. |
+
+Renders as a badge next to the verification badge, reusing `diff_reports.py`'s own cumulative history (`accumulate_history`) and outcome index (`OutcomeIndex`) so both compute "have we seen this before" the same way:
+
+- **New** — never seen in any prior snapshot saved for this product.
+- **Seen Nx** — seen in N total snapshots including this one; hover shows the first-seen date.
+- **Resurfacing** — recurring *and* already has a logged outcome in `outcomes.jsonl` (via `log_outcome.py`) — takes priority over the plain Seen-Nx badge, since resurfacing an already-decided prospect (`no_reply`, `not_pursued`, etc.) without a new angle just repeats a decision already made; hover shows the outcome and date.
+
+Absent entirely if no history snapshots were found and none were passed explicitly, or `--no-history` was used — the report renders normally either way.
+
 ### Completeness scoring
 
 The report generator calculates a completeness score (0-100) based on:
@@ -122,6 +341,8 @@ The HTML report renders these sections in order:
 12. **Limits** — missing evidence and assumptions
 
 Sections 4-6 are omitted entirely when their array is empty or absent — the report never shows an empty "Companies" section with a placeholder card. Section 8 is omitted entirely when `growth_playbook` is absent or all of its sub-fields are empty.
+
+The toolbar also includes an **Export CSV** button — flattens every prospect (individuals, segments, companies) into one CSV with columns `type, name, stage, score, verification, pain_signal, why_fit, why_now, source_title, source_url, source_type, signal_date, next_action, caution` for pasting into a spreadsheet or CRM. `verification` is blank unless `verify_sources.py --annotate-out` was run first.
 
 ## Error handling
 

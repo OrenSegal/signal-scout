@@ -18,6 +18,16 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
+import diff_reports
+from signal_scout_core import (
+    TIER_BROKEN,
+    TIER_DISQUALIFYING,
+    TIER_LABELS,
+    TIER_LOW_MATCH,
+    TIER_UNSUPPORTED,
+    TIER_VERIFIED,
+)
+
 
 # ── Per-type dimension specs ───────────────────────────────────────────────────
 
@@ -86,6 +96,53 @@ def anchor_id(kind: str, index: int) -> str:
     return f"{kind}-{index}"
 
 
+def slugify(value: Any) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", str(value or "").strip().lower()).strip("-")
+    return slug or "signal-scout"
+
+
+NEXT_ACTION_FIELD = {"individual": "opener", "segment": "content_angle", "company": "bd_angle"}
+
+CSV_COLUMNS = [
+    "type", "name", "stage", "score", "verification", "pain_signal", "why_fit", "why_now",
+    "source_title", "source_url", "source_type", "signal_date", "next_action", "caution",
+]
+
+
+def csv_field(value: Any) -> str:
+    text = "" if value is None else str(value)
+    text = text.replace('"', '""')
+    return f'"{text}"'
+
+
+def build_csv(individuals: list[dict[str, Any]], segments: list[dict[str, Any]], companies: list[dict[str, Any]]) -> str:
+    """Flatten all three prospect types into one CSV for spreadsheet/CRM import.
+    Type-specific fields (opener/content_angle/bd_angle) collapse into a single
+    `next_action` column since each row is already tagged with `type`."""
+    rows = [",".join(csv_field(col) for col in CSV_COLUMNS)]
+    for kind, prospects in (("individual", individuals), ("segment", segments), ("company", companies)):
+        action_field = NEXT_ACTION_FIELD[kind]
+        for item in prospects:
+            row = [
+                kind,
+                item.get("name", ""),
+                item.get("stage", ""),
+                clamp(item.get("score")),
+                TIER_LABELS.get(item.get("verification_tier"), "Unverified"),
+                item.get("pain_signal", ""),
+                item.get("why_fit", ""),
+                item.get("why_now", ""),
+                item.get("source_title", ""),
+                item.get("source_url", ""),
+                item.get("source_type", ""),
+                item.get("signal_date", ""),
+                item.get(action_field, ""),
+                item.get("caution", ""),
+            ]
+            rows.append(",".join(csv_field(v) for v in row))
+    return "\r\n".join(rows) + "\r\n"
+
+
 def clamp(value: Any, maximum: int = 100) -> int:
     try:
         number = round(float(value))
@@ -117,6 +174,62 @@ def stage_class(stage: Any) -> str:
     if "problem" in value or "trigger" in value:
         return "warm"
     return "cool"
+
+
+# ── Cross-run novelty (reuses diff_reports.py rather than reimplementing it) ──
+
+def discover_history(input_path: Path) -> list[Path]:
+    """Sibling analysis-*.json snapshots in the same directory as input, per
+    the SKILL.md storage convention — input itself excluded. Empty if the
+    convention wasn't followed (a one-off file outside that layout), which
+    just means novelty badges don't render — the same degrade diff_reports.py
+    has when it's given only one snapshot."""
+    resolved = input_path.resolve()
+    return [p for p in sorted(input_path.parent.glob("analysis-*.json")) if p.resolve() != resolved]
+
+
+def discover_outcomes(input_path: Path) -> Path | None:
+    candidate = input_path.parent / "outcomes.jsonl"
+    return candidate if candidate.exists() else None
+
+
+def compute_novelty(
+    data: dict[str, Any], history_paths: list[Path], outcomes_path: Path | None
+) -> dict[tuple[str, str, str], dict[str, Any]]:
+    """Classify every current prospect as new/recurring against every prior
+    snapshot given (not just the last one), and flag recurring prospects that
+    already have a logged outcome. Delegates to diff_reports.py's own history
+    accumulation and outcome index so a prospect's novelty status here always
+    agrees with what `diff_reports.py --outcomes` would print for the same
+    files — one definition of "have we seen this," not two."""
+    if not history_paths:
+        return {}
+    loaded = [(p, json.loads(p.read_text(encoding="utf-8"))) for p in history_paths]
+    loaded.sort(key=lambda pair: str(pair[1].get("generated_at", "")))
+    history_prospects, times_seen, first_seen = diff_reports.accumulate_history(loaded)
+    outcomes = diff_reports.OutcomeIndex(outcomes_path)
+    curr_prospects = diff_reports.load_prospects(data)
+
+    novelty: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for key in curr_prospects:
+        is_new = key not in history_prospects
+        entry: dict[str, Any] = {"is_new": is_new}
+        if not is_new:
+            entry["times_seen"] = times_seen.get(key, 0) + 1
+            entry["first_seen"] = first_seen.get(key, "")
+        record = outcomes.lookup(key[1], key[2])
+        if record:
+            entry["prior_outcome"] = f"{record.get('outcome', '?')} on {record.get('date', '?')}"
+        novelty[key] = entry
+    return novelty
+
+
+def annotate_novelty(data: dict[str, Any], novelty: dict[tuple[str, str, str], dict[str, Any]]) -> None:
+    for kind in ("individuals", "segments", "companies"):
+        for item in dicts(data.get(kind)):
+            key = diff_reports.prospect_key(kind, item)
+            if key in novelty:
+                item["_novelty"] = novelty[key]
 
 
 def completeness_score(data: dict[str, Any], total_prospects: int) -> int:
@@ -170,12 +283,49 @@ def render_dimensions(dimensions: Any, kind: str) -> str:
     return "".join(rows)
 
 
+def render_novelty_badge(item: dict[str, Any]) -> str:
+    """Badge showing whether this prospect is new, recurring, or a recurrence
+    of one already decided — absent entirely when no run history was found,
+    same as a fresh product's first-ever report renders no badge at all."""
+    novelty = item.get("_novelty")
+    if not isinstance(novelty, dict):
+        return ""
+    if novelty.get("prior_outcome"):
+        return (
+            f'<span class="badge novelty decided" title="Already logged: {esc(novelty["prior_outcome"])}">'
+            f'Resurfacing</span>'
+        )
+    if novelty.get("is_new"):
+        return '<span class="badge novelty new">New</span>'
+    first_seen = str(novelty.get("first_seen", ""))
+    title_attr = f' title="First seen {esc(first_seen)}"' if first_seen else ""
+    return f'<span class="badge novelty recurring"{title_attr}>Seen {novelty.get("times_seen", 2)}x</span>'
+
+
 def render_card_header(item: dict[str, Any], index: int, kind: str, eyebrow_override: str = "") -> tuple[str, int]:
     score = clamp(item.get("score"))
     stage = item.get("stage", "Potential fit")
     eyebrow = eyebrow_override or TYPE_LABEL[kind]
     competitor = item.get("competitor_mentioned", "")
     competitor_badge = f'<span class="badge competitor">Uses {esc(competitor)}</span>' if competitor else ""
+    tier = item.get("verification_tier")
+    # "Not on page" and a dead link are different failures and must not share a
+    # badge with a paraphrase — one means check the wording, the other means the
+    # claim isn't real.
+    verify_class = {
+        TIER_VERIFIED: "verified",
+        TIER_LOW_MATCH: "low-match",
+        TIER_UNSUPPORTED: "unsupported",
+        TIER_BROKEN: "unsupported",
+    }.get(tier, "unverified")
+    verified_at = str(item.get("verified_at", ""))
+    verify_attr = f' data-verified-at="{esc(verified_at)}"' if verified_at else ""
+    verify_badge = (
+        f'<span class="badge verify {verify_class}"{verify_attr} title="{esc(item.get("verification_note", ""))}">'
+        f'{esc(TIER_LABELS.get(tier, "Unverified"))}</span>'
+        if tier else ""
+    )
+    novelty_badge = render_novelty_badge(item)
     header = f"""
       <header class="card-head">
         <div class="rank">{index:02d}</div>
@@ -185,6 +335,8 @@ def render_card_header(item: dict[str, Any], index: int, kind: str, eyebrow_over
           <div class="badges">
             <span class="stage {stage_class(stage)}">{esc(stage)}</span>
             {competitor_badge}
+            {verify_badge}
+            {novelty_badge}
           </div>
         </div>
         <div class="score" style="--score:{score}" aria-label="Fit score {score} out of 100">
@@ -237,8 +389,11 @@ def render_individual(item: dict[str, Any], index: int) -> str:
         f"Source: {item.get('source_url', '')}\n\n"
         f"Draft opener:\n{opener}"
     )
+    grounding_note = item.get("opener_grounding_note", "")
+    grounding_html = f'<p class="opener-warning">{esc(grounding_note)}</p>' if grounding_note else ""
     opener_html = (
         f'<blockquote><span>Suggested opener</span>{prose(opener)}</blockquote>'
+        f'{grounding_html}'
         f'{cc_prompt("Copy prompt for Claude Code", opener_prompt)}' if opener else
         '<blockquote class="no-channel"><span>Next action</span>No public reply or DM channel exists. Evidence only, not a contactable lead.</blockquote>'
     )
@@ -301,12 +456,17 @@ def render_segment(item: dict[str, Any], index: int) -> str:
 def render_company(item: dict[str, Any], index: int) -> str:
     header, score = render_card_header(item, index, "company", eyebrow_override=item.get("role", "Company"))
 
+    tier_row = (
+        f'<div><span>Why this tier</span><p>{prose(item.get("tier_rationale", ""))}</p></div>'
+        if item.get("tier_rationale") else ""
+    )
     rows = (
         f'<div><span>Combined value</span><p>{prose(item.get("why_fit", ""))}</p></div>'
         f'<div><span>Why now</span><p>{prose(item.get("why_now", ""))}</p></div>'
         f'<div><span>Execution path</span><p>{esc(item.get("execution_path", "Not specified"))}</p></div>'
         f'<div><span>Contact path</span><p>{esc(item.get("contact_path", "Not specified"))}</p></div>'
         f'<div><span>What to propose</span><p>{esc(item.get("what_to_propose", ""))}</p></div>'
+        f'{tier_row}'
         f'<div><span>Caution</span><p>{prose(item.get("caution", "Inferred fit, not a stated partnership request."))}</p></div>'
     )
     bd_prompt = (
@@ -446,9 +606,90 @@ def render_growth_playbook(gp: dict[str, Any]) -> str:
     </section>"""
 
 
+def verify_badge(item: dict[str, Any]) -> str:
+    """The same tier badge cards use, for non-prospect claims (battlecard)."""
+    tier = item.get("verification_tier")
+    if not tier:
+        return ""
+    verify_class = {
+        TIER_VERIFIED: "verified",
+        TIER_LOW_MATCH: "low-match",
+        TIER_UNSUPPORTED: "unsupported",
+        TIER_BROKEN: "unsupported",
+    }.get(tier, "unverified")
+    verified_at = str(item.get("verified_at", ""))
+    verify_attr = f' data-verified-at="{esc(verified_at)}"' if verified_at else ""
+    return (
+        f'<span class="badge verify {verify_class}"{verify_attr} title="{esc(item.get("verification_note", ""))}">'
+        f'{esc(TIER_LABELS.get(tier, "Unverified"))}</span>'
+    )
+
+
+def render_battlecard(entries: list[dict[str, Any]]) -> str:
+    """Per-competitor battlecard: each entry is a verified claim about where a
+    competitor's own users complain, plus the counter-angle. Entries whose
+    verification failed (Not on page / Broken source) are dropped here, not
+    rendered with a red badge — a client deliverable never ships a claim the
+    pipeline itself disproved."""
+    kept = [e for e in entries if e.get("verification_tier") not in TIER_DISQUALIFYING]
+    if not kept:
+        return ""
+    cards = []
+    for entry in kept:
+        source = safe_url(entry.get("source_url"))
+        corroboration = ""
+        if entry.get("corroboration_note"):
+            corroboration = f'<span class="badge novelty recurring" title="{esc(entry["corroboration_note"])}">Single-source</span>'
+        elif entry.get("corroboration_count"):
+            corroboration = f'<span class="badge novelty new">Corroborated by {int(entry["corroboration_count"])} prospect(s)</span>'
+        barrier = (
+            f'<p><span>Switching barrier</span>{prose(entry.get("switching_barrier", ""))}</p>'
+            if entry.get("switching_barrier") else ""
+        )
+        cards.append(f"""
+        <div class="battle-card">
+          <div class="battle-head">
+            <h4>{esc(entry.get('competitor', 'Competitor'))}</h4>
+            <div class="badges">{verify_badge(entry)}{corroboration}</div>
+          </div>
+          <p><span>Where their users complain</span>{prose(entry.get('claim', ''))}</p>
+          <blockquote>{prose(entry.get('evidence', ''))}
+            <a href="{source}" target="_blank" rel="noreferrer">{esc(entry.get('source_title', 'Source'))} ↗</a>
+          </blockquote>
+          {barrier}
+          <p><span>Counter-angle</span>{prose(entry.get('counter_angle', ''))}</p>
+        </div>""")
+    return f'<div class="battle-grid">{"".join(cards)}</div>'
+
+
+def render_client_summary(summary: dict[str, Any]) -> str:
+    """Authored executive summary — the client-facing 'what we did, what we
+    found, what to do Monday' block. Synthesis only: SKILL.md requires every
+    statement here to trace to a verified prospect's fields, so this renderer
+    adds no badges — the claims it summarizes carry theirs on the cards."""
+    findings = items(summary.get("key_findings"))
+    steps = items(summary.get("next_steps"))
+    if not (summary.get("overview") or findings or steps):
+        return ""
+    findings_html = "".join(f"<li>{prose(f)}</li>" for f in findings)
+    steps_html = "".join(f"<li>{prose(s)}</li>" for s in steps)
+    return f"""
+      <section class="client-summary">
+        <header class="section-head">
+          <h2>Executive summary</h2>
+          <p>{prose(summary.get('overview', ''))}</p>
+        </header>
+        <div class="summary-grid">
+          {f'<div><span>What we found</span><ol>{findings_html}</ol></div>' if findings_html else ''}
+          {f'<div><span>Do this Monday</span><ol>{steps_html}</ol></div>' if steps_html else ''}
+        </div>
+      </section>"""
+
+
 def render_competitive_context(ctx: dict[str, Any]) -> str:
     competitors = items(ctx.get("top_competitors"))
     comp_list = "".join(f"<li>{esc(c)}</li>" for c in competitors)
+    battlecard_html = render_battlecard(dicts(ctx.get("battlecard")))
     return f"""
     <section class="competitive">
       <header class="section-head">
@@ -469,6 +710,7 @@ def render_competitive_context(ctx: dict[str, Any]) -> str:
           <p>{prose(ctx.get('differentiation_angle', 'Not specified'))}</p>
         </div>
       </div>
+      {battlecard_html}
     </section>"""
 
 
@@ -503,21 +745,52 @@ def render_research_audit(data: dict[str, Any]) -> str:
     </section>"""
 
 
-def render_type_section(kind: str, items_list: list[dict[str, Any]]) -> str:
+def render_type_section(kind: str, items_list: list[dict[str, Any]], title: str = "", subtitle: str = "") -> str:
     if not items_list:
         return ""
-    title, subtitle = SECTION_META[kind]
+    default_title, default_subtitle = SECTION_META[kind]
     cards = "".join(RENDERERS[kind](x, i) for i, x in enumerate(items_list, 1))
     return f"""
       <section>
         <header class="section-head">
-          <h2>{title}</h2>
-          <p>{subtitle}</p>
+          <h2>{esc(title) or default_title}</h2>
+          <p>{esc(subtitle) or default_subtitle}</p>
         </header>
         <div class="cards">
           {cards}
         </div>
       </section>"""
+
+
+COMPANY_TIER_META = {
+    1: ("Tier 1 — pursue now", "Strongest fit and lowest-friction path; open these conversations this week."),
+    2: ("Tier 2 — nurture", "Real fit, but a slower path or weaker trigger; queue behind Tier 1."),
+    3: ("Tier 3 — monitor", "Plausible but missing a live trigger; watch for a change before investing time."),
+}
+
+
+def render_companies(companies: list[dict[str, Any]]) -> str:
+    """Companies grouped by account tier when any company declares one —
+    turning a flat list into an account plan — else the flat section as before."""
+    def tier_of(item: dict[str, Any]) -> int:
+        try:
+            tier = int(item.get("tier", 0))
+        except (TypeError, ValueError):
+            return 0
+        return tier if tier in COMPANY_TIER_META else 0
+
+    if not any(tier_of(c) for c in companies):
+        return render_type_section("company", companies)
+    sections = []
+    for tier in (1, 2, 3):
+        group = [c for c in companies if tier_of(c) == tier]
+        if group:
+            title, subtitle = COMPANY_TIER_META[tier]
+            sections.append(render_type_section("company", group, title, subtitle))
+    untiered = [c for c in companies if not tier_of(c)]
+    if untiered:
+        sections.append(render_type_section("company", untiered, "Untiered companies", "Evaluated but not yet placed in the account plan."))
+    return "".join(sections)
 
 
 # ── Main HTML builder ─────────────────────────────────────────────────────────
@@ -554,7 +827,27 @@ def build_html(data: dict[str, Any]) -> str:
 
     individuals_html = render_type_section("individual", individuals)
     segments_html = render_type_section("segment", segments)
-    companies_html = render_type_section("company", companies)
+    companies_html = render_companies(companies)
+
+    client_summary = data.get("executive_summary") if isinstance(data.get("executive_summary"), dict) else {}
+    client_summary_html = render_client_summary(client_summary) if client_summary else ""
+
+    # Trust mark: tier counts across every checked claim — prospects plus
+    # battlecard entries — rendered in the footer so the report's core promise
+    # ("we re-fetched every claim") is stated where a skeptical reader looks.
+    battlecard_claims = [
+        e for e in dicts(comp_ctx.get("battlecard"))
+        if e.get("verification_tier") not in TIER_DISQUALIFYING
+    ]
+    checked_claims = [x for x in all_prospects + battlecard_claims if x.get("verification_tier")]
+    trust_mark_html = ""
+    if checked_claims:
+        verified_count = sum(1 for x in checked_claims if x.get("verification_tier") == TIER_VERIFIED)
+        trust_mark_html = (
+            f'<span class="trust-mark"><b>{verified_count} of {len(checked_claims)}</b> claims verified '
+            f'against their live or archived source before this report shipped · '
+            f'every claim discloses its source</span>'
+        )
 
     best_row = "".join([
         render_best_card("individual", best_individual),
@@ -569,6 +862,8 @@ def build_html(data: dict[str, Any]) -> str:
     comp_section = render_competitive_context(comp_ctx) if comp_ctx else ""
     growth_section = render_growth_playbook(growth_playbook) if growth_playbook else ""
     audit_section = render_research_audit(data)
+    csv_data = build_csv(individuals, segments, companies)
+    csv_filename = f"{slugify(data.get('title'))}-prospects.csv"
 
     channels = plan.get("channels_to_prioritize")
     channels_html = ""
@@ -617,6 +912,13 @@ def build_html(data: dict[str, Any]) -> str:
       --shadow: 0 1px 0 rgba(255, 255, 255, .04) inset, 0 14px 34px rgba(0, 0, 0, .38);
       --fill-a: #ff7a45; --fill-b: #6fb0a0; --fill-c: #d7a544; --fill-ink: #1a1208;
       --on-ink: #1a1208; --ink-soft: #ded4c1;
+      --ok: #6fb0a0; --warn: #d7a544;
+      /* Display face carries the editorial voice; UI face carries everything
+         interactive. Keeping them in variables stops the two from being
+         reintroduced as competing `body` rules. */
+      --font-display: "Iowan Old Style", Charter, ui-serif, Georgia, "Times New Roman", serif;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }}
     :root[data-theme="light"] {{
       --bg: #faf6ee; --panel: #ffffff; --panel2: #f2ece0; --ink: #241d13; --muted: #6d6350;
@@ -640,10 +942,18 @@ def build_html(data: dict[str, Any]) -> str:
       margin: 0;
       background: var(--bg);
       color: var(--ink);
-      font-family: "Iowan Old Style", Charter, ui-serif, Georgia, "Segoe UI", sans-serif;
+      font-family: var(--font-ui);
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }}
-    body, input, button {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }}
+    input, button {{ font-family: var(--font-ui); }}
+    /* The editorial face, applied only to display type. Body copy and controls
+       stay on the UI face — the contrast between the two is the whole point. */
+    h1, h2, h3, .best-card h3, .plan h2, .verdict, blockquote {{ font-family: var(--font-display); }}
+    h1, h2, h3 {{ font-weight: 600; }}
+    .score strong, .pattern > strong, .best-card strong, .stats strong {{
+      font-family: var(--font-display); font-variant-numeric: tabular-nums;
+    }}
     a {{ color: inherit; }}
     ul {{ margin: 0; padding-left: 1.2em; }}
     li {{ margin: 2px 0; }}
@@ -663,6 +973,27 @@ def build_html(data: dict[str, Any]) -> str:
       font: 650 11px inherit; letter-spacing: .02em; display: inline-block;
     }}
     .badge.competitor {{ border-color: var(--danger); color: var(--danger); }}
+    /* The verification badge is the one claim this report makes that nothing
+       else in the category makes, so it gets real colour, not a grey pill.
+       Paraphrase is amber (check the wording), not-on-page is red (the claim
+       may be invented) — collapsing those two into one colour was what made
+       the badge unreadable at a glance. */
+    .badge.verify {{ font-weight: 750; }}
+    .badge.verify::before {{ content: ""; width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: 1px; background: currentColor; }}
+    .badge.verify.verified {{ border-color: var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }}
+    .badge.verify.low-match {{ border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }}
+    .badge.verify.unsupported {{ border-color: var(--danger); color: var(--danger); background: color-mix(in srgb, var(--danger) 16%, transparent); font-weight: 800; }}
+    .badge.verify.unverified {{ border-color: var(--line); color: var(--muted); }}
+    .badge.verify .verify-age {{ opacity: .72; font-weight: 500; margin-left: 2px; }}
+    /* Novelty badges answer "have I already seen this" at a glance — new is
+       the thing worth looking at, decided is the thing worth NOT re-reading,
+       plain recurring is informational and stays muted so it doesn't compete
+       with new/decided for attention. Absent entirely with no run history. */
+    .badge.novelty {{ font-weight: 700; }}
+    .badge.novelty.new {{ border-color: var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }}
+    .badge.novelty.recurring {{ border-color: var(--line); color: var(--muted); font-weight: 650; }}
+    .badge.novelty.decided {{ border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }}
+    .opener-warning {{ color: var(--warn); font: 650 12.5px inherit; margin: 6px 0 0; }}
     .completeness-badge {{
       background: var(--fill-a); color: var(--fill-ink); padding: 6px 12px; border-radius: 999px;
       font: 750 12px inherit; display: flex; align-items: center; gap: 6px;
@@ -693,7 +1024,8 @@ def build_html(data: dict[str, Any]) -> str:
     .stats-metrics > div {{ padding: 16px 18px; }}
     .stats-metrics > div + div {{ border-left: 1px solid var(--line); }}
     .stats span, .info-grid span, .glance-label, .evidence span, blockquote span,
-    .audit-card span, .comp-card span, .follow-ups span, .keywords span, .proof-points span {{
+    .audit-card span, .comp-card span, .follow-ups span, .keywords span, .proof-points span,
+    .battle-card p span, .summary-grid > div > span {{
       display: block; color: var(--muted); font: 700 10px inherit;
       letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px;
     }}
@@ -707,21 +1039,45 @@ def build_html(data: dict[str, Any]) -> str:
     .filter-bar input::placeholder {{ color: var(--muted); }}
 
     .best-row {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 56px; }}
-    .best-card {{ padding: 22px; border-radius: var(--radius); box-shadow: var(--shadow); color: var(--fill-ink); }}
+    /* Flex column with the score pushed to the bottom, so the three scores sit
+       on one line regardless of how long each headline runs. Grid's default
+       top-alignment left a dead gap under short cards and made the row
+       impossible to compare across. */
+    .best-card {{
+      display: flex; flex-direction: column; padding: 22px; border-radius: var(--radius);
+      box-shadow: var(--shadow); color: var(--fill-ink);
+    }}
     .best-card.acc-a {{ background: var(--fill-a); }}
     .best-card.acc-b {{ background: var(--fill-b); }}
     .best-card.acc-c {{ background: var(--fill-c); }}
-    .best-label {{ font: 750 11px inherit; letter-spacing: .05em; text-transform: uppercase; opacity: .75; }}
-    .best-card h3 {{ font-size: clamp(20px, 2.6vw, 27px); letter-spacing: -.02em; line-height: 1.1; margin: 8px 0; }}
-    .best-card p {{ margin: 0 0 10px; font-size: 13px; }}
-    .best-card strong {{ font-size: 30px; }}
+    .best-label {{ font: 750 11px inherit; letter-spacing: .05em; text-transform: uppercase; opacity: .7; }}
+    .best-card h3 {{ font-size: clamp(20px, 2.4vw, 26px); letter-spacing: -.01em; line-height: 1.12; margin: 8px 0; }}
+    .best-card p {{ margin: 0 0 14px; font-size: 13px; line-height: 1.5; opacity: .85; }}
+    .best-card strong {{
+      margin-top: auto; padding-top: 10px; font-size: 34px; line-height: 1;
+      border-top: 1px solid color-mix(in srgb, var(--fill-ink) 22%, transparent);
+    }}
 
     .section-head {{ display: flex; justify-content: space-between; align-items: end; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }}
     .section-head h2 {{ font-size: clamp(26px, 3.6vw, 40px); line-height: 1.02; letter-spacing: -.025em; margin: 0; }}
     .section-head p {{ color: var(--muted); max-width: 440px; margin: 0; font-size: 14px; }}
 
     .cards {{ display: grid; gap: 12px; margin-bottom: 60px; }}
-    .card {{ background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow); }}
+    .card {{
+      position: relative; background: var(--panel); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 20px 22px 20px 26px; box-shadow: var(--shadow);
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }}
+    /* A colour-coded spine so prospect type is legible while scrolling, without
+       reading the eyebrow. Individual/Segment/Company get different next
+       actions, so type is the first thing worth knowing about a card. */
+    .card::before {{
+      content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px;
+      border-radius: 0 3px 3px 0; background: var(--a);
+    }}
+    .card-segment::before {{ background: var(--b); }}
+    .card-company::before {{ background: var(--c); }}
+    .card:hover {{ border-color: var(--line-strong); box-shadow: var(--shadow), 0 0 0 1px var(--line); }}
     .card.hidden {{ display: none; }}
     .card-head {{ display: grid; grid-template-columns: 40px 1fr 76px 30px; gap: 14px; align-items: start; }}
     .link-btn {{
@@ -755,10 +1111,13 @@ def build_html(data: dict[str, Any]) -> str:
     .stage.warm {{ color: var(--c); border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }}
     .stage.cool {{ color: var(--b); border-color: var(--b); background: color-mix(in srgb, var(--b) 12%, transparent); }}
     .score {{
-      --score: 0; width: 68px; height: 68px; border-radius: 50%; display: grid; place-content: center; text-align: center;
-      background: radial-gradient(circle, var(--panel) 58%, transparent 60%), conic-gradient(var(--a) calc(var(--score) * 1%), var(--line) 0);
+      --score: 0; --ring: var(--a);
+      width: 68px; height: 68px; border-radius: 50%; display: grid; place-content: center; text-align: center;
+      background: radial-gradient(circle, var(--panel) 58%, transparent 60%), conic-gradient(var(--ring) calc(var(--score) * 1%), var(--line) 0);
     }}
-    .score strong {{ font-size: 19px; line-height: 1; }}
+    .card-segment .score {{ --ring: var(--b); }}
+    .card-company .score {{ --ring: var(--c); }}
+    .score strong {{ font-size: 20px; line-height: 1; }}
     .score small {{ color: var(--muted); font-size: 10px; }}
     .glance {{ margin: 14px 0 0; font-size: 15px; color: var(--ink-soft); }}
     .card-segment .glance {{ border-left: 3px solid var(--b); padding-left: 12px; }}
@@ -823,6 +1182,21 @@ def build_html(data: dict[str, Any]) -> str:
     .agent-card p {{ margin: 0; font-size: 12px; color: var(--muted); }}
 
     .competitive {{ margin-bottom: 60px; }}
+    .battle-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 14px; }}
+    .battle-card {{ background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }}
+    .battle-head {{ display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }}
+    .battle-head h4 {{ margin: 0; font-family: var(--font-display); font-size: 18px; }}
+    .battle-card p {{ margin: 0 0 10px; font-size: 13.5px; color: var(--ink-soft); }}
+    .battle-card p span {{ display: block; margin-bottom: 3px; }}
+    .battle-card blockquote {{ margin: 0 0 10px; padding: 10px 14px; border-left: 3px solid var(--warn); background: var(--panel2); border-radius: 8px; font-size: 13px; color: var(--muted); }}
+    .battle-card blockquote a {{ display: block; margin-top: 6px; color: var(--link); font-size: 12px; }}
+    .client-summary {{ background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 26px 28px; margin: 0 0 30px; box-shadow: var(--shadow); }}
+    .client-summary .section-head {{ margin-bottom: 14px; }}
+    .client-summary .section-head p {{ max-width: none; color: var(--ink-soft); }}
+    .summary-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }}
+    .summary-grid ol {{ margin: 8px 0 0; padding-left: 20px; display: grid; gap: 7px; font-size: 13.5px; color: var(--ink-soft); }}
+    .trust-mark {{ color: var(--ok); font-weight: 650; }}
+    .trust-mark b {{ font-weight: 800; }}
     .comp-grid {{ display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; }}
     .comp-card--full {{ grid-column: 1 / -1; }}
     .comp-card span {{ margin-bottom: 8px; }}
@@ -918,6 +1292,7 @@ def build_html(data: dict[str, Any]) -> str:
       <div class="meta">
         <span class="chip">Public signals only</span>
         <span class="completeness-badge">Completeness {completeness}%</span>
+        <button type="button" id="exportCsvBtn">Export CSV</button>
         <button type="button" onclick="window.print()">Print / Save PDF</button>
       </div>
     </header>
@@ -930,6 +1305,8 @@ def build_html(data: dict[str, Any]) -> str:
         {exec_summary_html}
         {action_row_html}
       </section>
+
+      {client_summary_html}
 
       <section class="stats">
         <div class="stats-product">
@@ -989,12 +1366,29 @@ def build_html(data: dict[str, Any]) -> str:
     </main>
 
     <footer>
-      <span>Generated by signal-scout</span>
+      {trust_mark_html}
+      <span>Generated by signal-scout · public signals only, no scraped contact data, no data brokers</span>
       <span>Outreach is never sent automatically.</span>
     </footer>
   </div>
 
   <script>
+    const CSV_DATA = {json.dumps(csv_data)};
+    const CSV_FILENAME = {json.dumps(csv_filename)};
+
+    document.getElementById('exportCsvBtn').addEventListener('click', (e) => {{
+      const blob = new Blob([CSV_DATA], {{ type: 'text/csv;charset=utf-8;' }});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = CSV_FILENAME;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      flashButton(e.currentTarget, 'Downloaded ✓');
+    }});
+
     document.querySelectorAll('.filter-bar button').forEach(btn => {{
       btn.addEventListener('click', () => {{
         document.querySelectorAll('.filter-bar button').forEach(b => b.classList.remove('active'));
@@ -1042,6 +1436,20 @@ def build_html(data: dict[str, Any]) -> str:
       }}
     }});
 
+    // Computed against the *viewer's* clock, not the report's generation
+    // time — this report is a static file that may be reopened weeks after
+    // it was built, and staleness should reflect that, not the day it shipped.
+    document.querySelectorAll('.badge.verify[data-verified-at]').forEach(badge => {{
+      const verifiedDate = new Date(badge.dataset.verifiedAt);
+      if (Number.isNaN(verifiedDate.getTime())) return;
+      const days = Math.floor((Date.now() - verifiedDate.getTime()) / 86400000);
+      if (days < 1) return;
+      const suffix = document.createElement('small');
+      suffix.className = 'verify-age';
+      suffix.textContent = ` · ${{days}}d ago`;
+      badge.appendChild(suffix);
+    }});
+
     document.getElementById('searchInput').addEventListener('input', (e) => {{
       const q = e.target.value.toLowerCase();
       document.querySelectorAll('.card').forEach(card => {{
@@ -1065,6 +1473,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path, help="Path to report JSON")
     parser.add_argument("output", type=Path, help="Path to output HTML")
+    parser.add_argument(
+        "--history", type=Path, nargs="*", default=None,
+        help="Prior analysis-*.json snapshots for New/Recurring/Resurfacing badges. "
+        "Auto-detected from sibling files (SKILL.md storage convention) if omitted.",
+    )
+    parser.add_argument(
+        "--no-history", action="store_true",
+        help="Disable novelty-badge auto-detection even if sibling analysis-*.json snapshots exist.",
+    )
+    parser.add_argument(
+        "--outcomes", type=Path, default=None,
+        help="outcomes.jsonl for flagging resurfacing prospects already decided. "
+        "Auto-detected as a sibling file if omitted.",
+    )
     args = parser.parse_args()
 
     with args.input.open("r", encoding="utf-8") as handle:
@@ -1074,6 +1496,24 @@ def main() -> None:
 
     if not any(dicts(data.get(k)) for k in ("individuals", "segments", "companies")):
         raise SystemExit("At least one of individuals, segments, or companies must be a non-empty array.")
+
+    if args.no_history:
+        history_paths: list[Path] = []
+    elif args.history is not None:
+        history_paths = args.history
+    else:
+        history_paths = discover_history(args.input)
+    outcomes_path = args.outcomes if args.outcomes is not None else discover_outcomes(args.input)
+
+    if history_paths:
+        novelty = compute_novelty(data, history_paths, outcomes_path)
+        annotate_novelty(data, novelty)
+        new_count = sum(1 for v in novelty.values() if v.get("is_new"))
+        decided_count = sum(1 for v in novelty.values() if v.get("prior_outcome"))
+        print(
+            f"Novelty: {len(history_paths)} prior snapshot(s) found — {new_count} new, "
+            f"{len(novelty) - new_count} recurring ({decided_count} already decided)."
+        )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(build_html(data), encoding="utf-8")

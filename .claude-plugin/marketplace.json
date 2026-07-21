@@ -9,7 +9,7 @@
       "name": "signal-scout",
       "source": "./",
       "description": "Turns a startup URL or product description into an evidence-backed shortlist of first customers, market segments, and companies worth pitching.",
-      "version": "1.0.1",
+      "version": "1.6.0",
       "license": "MIT",
       "keywords": ["sales", "gtm", "prospecting", "customer-discovery", "outreach"]
     }
