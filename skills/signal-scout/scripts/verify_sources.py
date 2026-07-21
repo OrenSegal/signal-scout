@@ -28,6 +28,18 @@ Usage:
 Exit code is non-zero if any source is unreachable (dead link, invalid URL) or
 any claim is missing from its live page. Paraphrase is reported, not failed —
 rewording a real signal is legitimate; inventing one is not.
+
+Reddit's new UI (reddit.com / www.reddit.com) serves a client-side
+bot-verification interstitial to script fetches — HTTP 200, but the page is
+just a "please wait for verification" stub, not the real thread. old.reddit.com
+serves the same content server-rendered, with no such wall, so reddit.com and
+www.reddit.com URLs are fetched via their old.reddit.com equivalent instead
+(the URL recorded on the prospect is left untouched — only the fetch target
+changes). Other known bot-walled platforms (X/Twitter, LinkedIn, Glassdoor,
+Indeed) still 403/429 real script fetches outright — that's a platform
+anti-bot wall, not evidence the link is broken, so those fall back to the
+Wayback Machine like any other unreadable page before tiering as
+snippet-only.
 """
 
 from __future__ import annotations
@@ -55,9 +67,44 @@ from signal_scout_core import (
 )
 
 
-def is_reddit(url: str) -> bool:
+BOT_WALLED_DOMAINS = (
+    "reddit.com",
+    "x.com",
+    "twitter.com",
+    "linkedin.com",
+    "glassdoor.com",
+    "indeed.com",
+)
+
+
+def bot_walled_host(url: str) -> str | None:
+    """Return the matched domain if url's host is a platform known to 403/429
+    scripted fetches regardless of whether the page is actually live, else None."""
     host = urlparse(url).netloc.lower()
-    return host == "reddit.com" or host.endswith(".reddit.com")
+    for domain in BOT_WALLED_DOMAINS:
+        if host == domain or host.endswith("." + domain):
+            return domain
+    return None
+
+
+CHALLENGE_MARKERS = ("please wait for verification", "checking your browser")
+
+
+def canonicalize_for_fetch(url: str) -> str:
+    """reddit.com/www.reddit.com serve a client-side bot-verification stub to script
+    fetches; old.reddit.com serves the same page server-rendered with no such wall.
+    Rewrite just the fetch target — the URL shown to the user is untouched."""
+    parsed = urlparse(url)
+    if parsed.netloc.lower() in ("reddit.com", "www.reddit.com"):
+        return parsed._replace(netloc="old.reddit.com").geturl()
+    return url
+
+
+def is_challenge_page(status: int | None, text: str) -> bool:
+    if status != 200 or len(text) > 200:
+        return False
+    lowered = text.lower()
+    return any(marker in lowered for marker in CHALLENGE_MARKERS)
 
 
 # Meta keys whose content is worth harvesting on JS-rendered pages — an SPA
@@ -131,7 +178,9 @@ class _TextExtractor(HTMLParser):
 
 
 def fetch_text(url: str, timeout: int) -> tuple[int | None, str]:
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (signal-scout verifier)"})
+    request = urllib.request.Request(
+        canonicalize_for_fetch(url), headers={"User-Agent": "Mozilla/5.0 (signal-scout verifier)"}
+    )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             status = response.status
@@ -203,13 +252,14 @@ def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float
         return (TIER_SNIPPET_ONLY,
                 "Source rate-limited the fetch (HTTP 429) and no archived copy found; evidence is snippet-sourced only",
                 0.0, 0.0)
-    if status == 403 and is_reddit(url):
-        # Reddit blocks automated fetches (403) even for real, live threads —
-        # this is a platform anti-bot wall, not evidence the link is dead. Don't
+    domain = bot_walled_host(url)
+    if (status in (403, 429) or is_challenge_page(status, page_text)) and domain:
+        # These platforms block automated fetches (403/429) even for real, live
+        # pages — a platform anti-bot wall, not evidence the link is dead. Don't
         # fail the run over it; the agent should trust the discovery-search
         # snippet that surfaced this URL and note the gap in `limits` instead.
         return (TIER_SNIPPET_ONLY,
-                "Reddit blocks automated fetch and no archived copy found; evidence is snippet-sourced only",
+                f"{domain} blocks automated fetch and no archived copy found; evidence is snippet-sourced only",
                 0.0, 0.0)
     if live_failed:
         return TIER_BROKEN, f"Source unreachable (status {status}) and no archived copy found", 0.0, 0.0
@@ -218,9 +268,9 @@ def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float
 
 def iter_prospects(data: dict[str, Any]):
     for kind in ("individuals", "segments", "companies"):
-        for item in data.get(kind) or []:
+        for index, item in enumerate(data.get(kind) or []):
             if isinstance(item, dict):
-                yield kind, item
+                yield kind, index, item
 
 
 def battlecard_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -262,7 +312,7 @@ def main() -> None:
         results.append((kind, name, url, tier, quoted, topical))
 
     ungrounded_openers = 0
-    for kind, item in iter_prospects(data):
+    for kind, _index, item in iter_prospects(data):
         name = str(item.get("name", "(unnamed)"))
         url = str(item.get("source_url", "")).strip()
         if kind == "individuals":
@@ -285,7 +335,7 @@ def main() -> None:
     if battlecard:
         mentions = [
             str(item.get("competitor_mentioned", "")).strip().lower()
-            for _, item in iter_prospects(data)
+            for _, _, item in iter_prospects(data)
             if str(item.get("competitor_mentioned", "")).strip()
         ]
         for entry in battlecard:
