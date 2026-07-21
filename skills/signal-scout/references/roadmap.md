@@ -163,3 +163,18 @@ product's full cumulative history (reusing item 3's `accumulate_history()`),
 so a prospect dropped from product A's latest run still surfaces if it's
 currently live in product B's. Single-file-per-product usage still works
 unchanged. See CHANGELOG.
+
+## 8. Repeat-usage tracking — shipped, founder-facing only
+
+`scripts/usage_stats.py` reads the `outputs/<slug>/analysis-<date>.json`
+storage convention (item 3's prerequisite) and reports how many products get
+re-run, how often, and the average gap — entirely local, no telemetry. Not
+part of the agent workflow; a separate, manually-invoked check.
+
+## 9. MCP server (B2A distribution) — v0 scaffold
+
+`mcp-server/` wraps the research workflow as callable tools
+(`find_first_customers`, `classify_and_score`) for other agents to call
+directly, instead of only a human invoking the skill inside Claude Code. See
+`mcp-server/README.md` for setup and what's tested vs. not. Calls are
+metered locally to `usage.jsonl` only — no payment provider wired in.
