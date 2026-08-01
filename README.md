@@ -134,6 +134,10 @@ signal-scout finds and scores prospects — it doesn't write the outreach itself
 - Claude Code or OpenCode with `websearch`, `webfetch`, and `bash` tools available
 - Node.js 16+ only if installing via `npx`
 
+## Support this project
+
+If signal-scout is saving you research time, [sponsoring on GitHub](https://github.com/sponsors/OrenSegal) keeps it maintained and funds the roadmap items in [`skills/signal-scout/references/roadmap.md`](skills/signal-scout/references/roadmap.md).
+
 ## License
 
 MIT
