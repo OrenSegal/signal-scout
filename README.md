@@ -1,5 +1,7 @@
 # signal-scout
 
+[![CI](https://github.com/OrenSegal/signal-scout/actions/workflows/ci.yml/badge.svg)](https://github.com/OrenSegal/signal-scout/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
+
 An agent skill — for Claude Code, Claude Cowork, OpenCode, Codex, and any [agent-skills](https://agentskills.io)-compatible host — that turns a startup URL or product description into a short, evidence-backed shortlist of first customers, market segments, and companies worth pitching — using **public signals only**. No data brokers, no scraped emails or contact info, no private groups, no protected-trait targeting.
 
 **It checks itself before it ships.** Every AI prospecting tool has the same failure mode: the model that writes a claim about a prospect also grades its own confidence in that claim, and nothing forces it to reopen the source. `scripts/verify_sources.py` does — it fetches every cited URL and confirms the evidence is actually on the page, not paraphrased from a search snippet or invented outright. A claim that fails never reaches the report. That's what makes "don't re-check this by hand" an honest claim instead of a hopeful one — see [What this actually fixes](#what-this-actually-fixes).
