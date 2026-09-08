@@ -10,3 +10,4 @@ backshift/
 venv/
 .venv/
 mcp-server/usage.jsonl
+.env
