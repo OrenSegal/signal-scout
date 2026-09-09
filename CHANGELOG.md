@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.1
+
+- Added CONTRIBUTING.md.
+- Fixed a stale code comment claiming intro pricing was date-conditional; it isn't — the dict is static, comment now says so.
+- The three bare `except Exception:` blocks in `verify_sources.py`'s fetch paths now log to stderr before continuing, instead of failing silently.
+- Removed `STRIPE_HOSTED_SPEC.md` from git history entirely (it was already gitignored going forward, but its content was still recoverable from old commits).
+
 ## 1.6.0
 
 Client-deliverable report capabilities (designed for the agency / fractional-GTM reader), verification-engine hardening, and a formal compliance posture.
