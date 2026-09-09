@@ -18,7 +18,7 @@ METER_LOG = Path(os.environ.get("SIGNAL_SCOUT_METER_LOG", str(Path.home() / ".si
 # $ per million tokens. Keep in sync with shared/models.md in the claude-api
 # skill (or platform.claude.com/docs/en/pricing) when pricing changes.
 PRICING = {
-    "claude-sonnet-5": {"input": 2.00, "output": 10.00},  # intro pricing through 2026-08-31
+    "claude-sonnet-5": {"input": 2.00, "output": 10.00},  # intro pricing window ended 2026-08-31; rate unchanged since — re-verify against platform.claude.com/docs/en/pricing if this stops matching billed cost
     "claude-opus-4-8": {"input": 5.00, "output": 25.00},
     "claude-haiku-4-5": {"input": 1.00, "output": 5.00},
 }
