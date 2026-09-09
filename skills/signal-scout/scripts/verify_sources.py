@@ -188,7 +188,8 @@ def fetch_text(url: str, timeout: int) -> tuple[int | None, str]:
             raw = response.read(2_000_000).decode(charset, errors="ignore")
     except urllib.error.HTTPError as exc:
         return exc.code, ""
-    except Exception:
+    except Exception as exc:
+        print(f"fetch_text: {url} — {exc}", file=sys.stderr)
         return None, ""
     parser = _TextExtractor()
     parser.feed(raw)
@@ -216,7 +217,8 @@ def fetch_wayback(url: str, timeout: int) -> tuple[str, str, str]:
         closest = (info.get("archived_snapshots") or {}).get("closest") or {}
         snapshot_url = closest.get("url") if closest.get("available") else ""
         snapshot_date = str(closest.get("timestamp", ""))[:8]
-    except Exception:
+    except Exception as exc:
+        print(f"fetch_wayback: {url} — {exc}", file=sys.stderr)
         return "", "", ""
     if not snapshot_url:
         return "", "", ""
@@ -226,13 +228,42 @@ def fetch_wayback(url: str, timeout: int) -> tuple[str, str, str]:
     return "", "", ""
 
 
-def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float, float]:
-    """Fetch a source (live first, Wayback fallback) and tier its evidence.
+ARCHIVE_PH_NEWEST = "https://archive.ph/newest/"
 
-    The Wayback fallback fires when the live page is unreachable, bot-walled
+
+def fetch_archive_ph(url: str, timeout: int) -> tuple[str, str]:
+    """Try archive.ph for a page Wayback has no snapshot of.
+
+    Second-tier fallback, tried only after fetch_wayback comes up empty:
+    archive.ph has no official lookup API (unlike Wayback's `available`
+    endpoint) and is heavily rate-limited (confirmed manually: a single
+    unthrottled request returned HTTP 429), so this is best-effort — a miss
+    here falls through to the existing Broken/SnippetOnly handling exactly as
+    if Wayback alone had been tried. `/newest/<url>` redirects straight to
+    the latest snapshot when one exists, or serves a non-2xx/challenge page
+    when it doesn't; fetch_text follows the redirect and returns whatever
+    text comes back, so a snapshot's actual URL is never recovered here --
+    only the fact that one had usable text is (nothing downstream needs the
+    snapshot URL itself, unlike Wayback's timestamped citation)."""
+    try:
+        status, text = fetch_text(ARCHIVE_PH_NEWEST + url, timeout)
+    except Exception as exc:
+        print(f"fetch_archive_ph: {url} — {exc}", file=sys.stderr)
+        return "", ""
+    if status is not None and status < 400 and len(text.strip()) >= 200:
+        return ARCHIVE_PH_NEWEST + url, text
+    return "", ""
+
+
+def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float, float]:
+    """Fetch a source (live first, Wayback then archive.ph fallback) and tier its evidence.
+
+    The archive fallbacks fire when the live page is unreachable, bot-walled
     (Reddit 403, any 429), or yields too little text to check (JS-rendered) —
     each a fetch problem, not a fabrication signal, and each recoverable when
-    an archived copy of the page exists."""
+    an archived copy of the page exists. Wayback is tried first (it has a
+    real lookup API); archive.ph is tried only if Wayback has no snapshot,
+    since it's best-effort and more likely to be rate-limited."""
     status, page_text = fetch_text(url, timeout)
 
     live_failed = status is None or status >= 400
@@ -242,6 +273,11 @@ def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float
         if archive_text:
             tier, note, quoted, topical = tier_for_evidence(evidence, archive_text)
             suffix = f" — checked against Wayback archive ({snapshot_date or 'undated'}), live page {'unreachable' if live_failed else 'yielded no text'}"
+            return tier, (note + suffix).strip(" —") if not note else note + suffix, quoted, topical
+        _, archive_ph_text = fetch_archive_ph(url, timeout)
+        if archive_ph_text:
+            tier, note, quoted, topical = tier_for_evidence(evidence, archive_ph_text)
+            suffix = f" — checked against archive.ph copy, live page {'unreachable' if live_failed else 'yielded no text'}"
             return tier, (note + suffix).strip(" —") if not note else note + suffix, quoted, topical
 
     if status == 429:
