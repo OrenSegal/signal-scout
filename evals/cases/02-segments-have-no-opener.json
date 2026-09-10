@@ -1,0 +1,10 @@
+{
+  "id": "segments-never-get-openers",
+  "input": "audience-level demand with no single addressable person",
+  "samples": 1,
+  "assert": [
+    { "must_not": { "field": "$.segments[*].opener" } },
+    { "contains": { "path": "$.segments[*].gtm_angle", "value": "community" } },
+    { "must_not": { "phrase": "as an ai language model", "in": "final_text" } }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "required": ["individuals", "segments", "companies"],
+  "properties": {
+    "individuals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "source_url", "evidence", "opener"],
+        "properties": {
+          "type": { "type": "string", "enum": ["Individual"] },
+          "source_url": { "type": "string", "minLength": 8 }
+        }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "gtm_angle"],
+        "properties": { "type": { "type": "string", "enum": ["Segment"] } }
+      }
+    },
+    "companies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": { "type": { "type": "string", "enum": ["Company"] } }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "model": "sonnet-5",
+    "skill_version": "1.6.0"
+  },
+  "tool_calls": [
+    {
+      "name": "finalize.py",
+      "input": {}
+    }
+  ],
+  "final_text": "Segment mapped to a GTM angle, no opener fabricated.",
+  "output": {
+    "individuals": [],
+    "segments": [
+      {
+        "name": "GLP-1 meal planners",
+        "type": "Segment",
+        "gtm_angle": "SEO + community content where the audience already gathers"
+      }
+    ],
+    "companies": []
+  }
+}

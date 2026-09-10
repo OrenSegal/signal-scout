@@ -1,0 +1,51 @@
+{
+  "name": "signal-scout",
+  "target": {
+    "skill": "signal-scout",
+    "model": "sonnet-5"
+  },
+  "cases": {
+    "classify-solo-maintainer-as-individual": {
+      "status": "PASS",
+      "assertions": {
+        "00:must_run": {
+          "status": "PASS",
+          "pass_rate": 1.0
+        },
+        "01:schema": {
+          "status": "PASS",
+          "pass_rate": 1.0
+        },
+        "02:equals": {
+          "status": "PASS",
+          "pass_rate": 1.0
+        },
+        "03:must_not": {
+          "status": "PASS",
+          "pass_rate": 1.0
+        },
+        "04:count": {
+          "status": "PASS",
+          "pass_rate": 1.0
+        }
+      }
+    },
+    "segments-never-get-openers": {
+      "status": "PASS",
+      "assertions": {
+        "00:must_not": {
+          "status": "PASS",
+          "pass_rate": 1.0
+        },
+        "01:contains": {
+          "status": "PASS",
+          "pass_rate": 1.0
+        },
+        "02:must_not": {
+          "status": "PASS",
+          "pass_rate": 1.0
+        }
+      }
+    }
+  }
+}

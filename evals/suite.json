@@ -1,0 +1,5 @@
+{
+  "name": "signal-scout",
+  "target": { "skill": "signal-scout", "model": "sonnet-5" },
+  "defaults": { "samples": 1 }
+}

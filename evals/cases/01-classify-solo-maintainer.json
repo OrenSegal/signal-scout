@@ -1,0 +1,12 @@
+{
+  "id": "classify-solo-maintainer-as-individual",
+  "input": "https://example-devtool.com — solo maintainer, active on GitHub issues and Hacker News",
+  "samples": 1,
+  "assert": [
+    { "must_run": "finalize.py" },
+    { "schema": { "path": "$", "ref": "signal-scout.schema.json" } },
+    { "equals": { "path": "$.individuals[0].type", "value": "Individual" } },
+    { "must_not": { "field": "$.segments[*].opener" } },
+    { "count": { "path": "$.individuals[*]", "op": ">=", "value": 1 } }
+  ]
+}
