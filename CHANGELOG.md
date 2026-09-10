@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.2
+
+- Added skill-behavior evals: `evals/` (ported from litmus's own signal-scout case study) gated in CI via `litmus gate` against a checked-in baseline — regression detection on the skill's actual output (individual/segment classification, schema, opener rules), not just script-level unit tests.
+
 ## 1.6.1
 
 - Added CONTRIBUTING.md.

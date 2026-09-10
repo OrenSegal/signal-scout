@@ -1,0 +1,33 @@
+{
+  "meta": { "model": "sonnet-5", "skill_version": "1.6.0" },
+  "tool_calls": [
+    { "name": "websearch", "input": { "q": "example-devtool maintainer" } },
+    { "name": "webfetch", "input": { "url": "https://github.com/example/devtool/issues" } },
+    { "name": "finalize.py", "input": {} }
+  ],
+  "final_text": "Classified 1 individual, 1 segment, 1 company.",
+  "cost_usd": 0.031,
+  "tokens": 4200,
+  "latency_ms": 5100,
+  "output": {
+    "individuals": [
+      {
+        "name": "A. Maintainer",
+        "type": "Individual",
+        "source_url": "https://news.ycombinator.com/item?id=00000",
+        "evidence": "Posted that fixture leaks make their CI flaky and they'd pay to stop guessing.",
+        "opener": "Saw your HN note about flaky fixtures leaking into CI — that's exactly the guessing this removes."
+      }
+    ],
+    "segments": [
+      {
+        "name": "Skill authors shipping to marketplaces",
+        "type": "Segment",
+        "gtm_angle": "community presence in Claude Code / OpenCode plugin communities"
+      }
+    ],
+    "companies": [
+      { "name": "A Plugin Marketplace", "type": "Company" }
+    ]
+  }
+}
