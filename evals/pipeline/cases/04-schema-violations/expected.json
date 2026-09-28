@@ -1,0 +1,14 @@
+{
+  "validate_errors": [
+    "score 20 does not match dimensions (computed 74)",
+    "opener present but suggested_channel says no channel exists",
+    "segment requires content_angle",
+    "tier must be 1, 2, or 3",
+    "tier requires tier_rationale"
+  ],
+  "prospects": {
+    "individuals/Drifted Score": {
+      "computed_score": 74
+    }
+  }
+}

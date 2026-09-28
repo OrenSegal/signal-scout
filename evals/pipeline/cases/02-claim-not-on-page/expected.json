@@ -1,0 +1,15 @@
+{
+  "validate_errors": [],
+  "verify_exit": 1,
+  "prospects": {
+    "individuals/Dana Park": {
+      "tier": "verified",
+      "opener_flagged": false,
+      "in_handoff": true
+    },
+    "individuals/Sam Invented": {
+      "tier": "unsupported",
+      "in_handoff": false
+    }
+  }
+}

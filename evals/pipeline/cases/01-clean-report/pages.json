@@ -1,0 +1,14 @@
+{
+  "https://forum.example.org/t/flaky-ci-fixtures": {
+    "status": 200,
+    "text": "Thread: flaky CI. Our CI goes red twice a week because test fixtures leak state between runs, and I would pay for a tool that tells me which fixture did it. The rest of this page is ordinary thread text: people compare runners, paste stack traces, argue about retries, and link to older issues about parallel test execution and shared temp directories."
+  },
+  "https://blog.example.org/maintainer-survey": {
+    "status": 200,
+    "text": "Survey notes from maintainers of small testing libraries. Many said flaky suites cost them weekend hours, and most blamed shared state between tests rather than the code under test. The rest of this page is ordinary thread text: people compare runners, paste stack traces, argue about retries, and link to older issues about parallel test execution and shared temp directories."
+  },
+  "https://plugins.example.org/changelog": {
+    "status": 200,
+    "text": "Changelog, September. We are opening our plugin directory to third-party test tooling vendors this quarter and will feature early partners on the launch page. The rest of this page is ordinary thread text: people compare runners, paste stack traces, argue about retries, and link to older issues about parallel test execution and shared temp directories."
+  }
+}

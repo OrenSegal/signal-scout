@@ -1,0 +1,18 @@
+{
+  "https://old-forum.example.org/t/bisect-flaky": {
+    "status": 404,
+    "text": "",
+    "wayback": {
+      "date": "20260801",
+      "text": "Archived post. I spent three days bisecting a flaky integration suite and it turned out one fixture was writing to a shared temp directory. The rest of this page is ordinary thread text: people compare runners, paste stack traces, argue about retries, and link to older issues about parallel test execution and shared temp directories."
+    }
+  },
+  "https://gone.example.org/post/1": {
+    "status": 404,
+    "text": ""
+  },
+  "https://www.reddit.com/r/testing/comments/abc/flaky_fixtures/": {
+    "status": 403,
+    "text": ""
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "title": "Pipeline eval fixture",
+  "product": "FixtureGuard",
+  "product_url": "https://fixtureguard.example.com",
+  "target_customer": "maintainers of test tooling",
+  "search_scope": "fixture only, not a real run",
+  "generated_at": "2026-09-27",
+  "verdict": "fixture",
+  "outreach_plan": {
+    "angle": "fixture"
+  },
+  "limits": [
+    "Synthetic fixture for evals/pipeline, not research output"
+  ],
+  "individuals": [
+    {
+      "name": "Rescued By Wayback",
+      "stage": "High intent",
+      "score": 74,
+      "pain_signal": "flaky CI from leaking fixtures",
+      "evidence": "I spent three days bisecting a flaky integration suite and it turned out one fixture was writing to a shared temp directory.",
+      "why_fit": "w",
+      "why_now": "n",
+      "source_title": "t",
+      "source_url": "https://old-forum.example.org/t/bisect-flaky",
+      "source_type": "Forum",
+      "signal_date": "2026-09-01",
+      "suggested_channel": "Forum reply",
+      "opener": "Your note about bisecting a flaky integration suite for three days caught my eye, the shared temp directory part especially.",
+      "caution": "c",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 4,
+        "timing": 4,
+        "reachability": 3,
+        "evidence_quality": 3
+      }
+    },
+    {
+      "name": "Dead Link",
+      "stage": "High intent",
+      "score": 74,
+      "pain_signal": "flaky CI from leaking fixtures",
+      "evidence": "Wrote that fixture cleanup is the worst part of their week.",
+      "why_fit": "w",
+      "why_now": "n",
+      "source_title": "t",
+      "source_url": "https://gone.example.org/post/1",
+      "source_type": "Forum",
+      "signal_date": "2026-09-01",
+      "suggested_channel": "Forum reply",
+      "opener": "Fixture cleanup, same here.",
+      "caution": "c",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 4,
+        "timing": 4,
+        "reachability": 3,
+        "evidence_quality": 3
+      }
+    },
+    {
+      "name": "Reddit Poster",
+      "stage": "High intent",
+      "score": 74,
+      "pain_signal": "flaky CI from leaking fixtures",
+      "evidence": "Asked whether anyone has a tool that finds which fixture leaks state.",
+      "why_fit": "w",
+      "why_now": "n",
+      "source_title": "t",
+      "source_url": "https://www.reddit.com/r/testing/comments/abc/flaky_fixtures/",
+      "source_type": "Forum",
+      "signal_date": "2026-09-01",
+      "suggested_channel": "Forum reply",
+      "opener": "Congrats on the Series B and the new Berlin office, would love to chat about your hiring plans.",
+      "caution": "c",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 4,
+        "timing": 4,
+        "reachability": 3,
+        "evidence_quality": 3
+      }
+    }
+  ]
+}

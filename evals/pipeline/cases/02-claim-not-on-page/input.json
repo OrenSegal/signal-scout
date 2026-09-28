@@ -1,0 +1,63 @@
+{
+  "title": "Pipeline eval fixture",
+  "product": "FixtureGuard",
+  "product_url": "https://fixtureguard.example.com",
+  "target_customer": "maintainers of test tooling",
+  "search_scope": "fixture only, not a real run",
+  "generated_at": "2026-09-27",
+  "verdict": "fixture",
+  "outreach_plan": {
+    "angle": "fixture"
+  },
+  "limits": [
+    "Synthetic fixture for evals/pipeline, not research output"
+  ],
+  "individuals": [
+    {
+      "name": "Dana Park",
+      "stage": "High intent",
+      "score": 74,
+      "pain_signal": "flaky CI from leaking fixtures",
+      "evidence": "Our CI goes red twice a week because test fixtures leak state between runs, and I would pay for a tool that tells me which fixture did it.",
+      "why_fit": "w",
+      "why_now": "n",
+      "source_title": "t",
+      "source_url": "https://forum.example.org/t/flaky-ci-fixtures",
+      "source_type": "Forum",
+      "signal_date": "2026-09-01",
+      "suggested_channel": "Forum reply",
+      "opener": "Saw your post about test fixtures leaking state between runs. Want to try a tool that names the fixture?",
+      "caution": "c",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 4,
+        "timing": 4,
+        "reachability": 3,
+        "evidence_quality": 3
+      }
+    },
+    {
+      "name": "Sam Invented",
+      "stage": "High intent",
+      "score": 74,
+      "pain_signal": "flaky CI from leaking fixtures",
+      "evidence": "Said their company budgets forty thousand dollars a year for fixture isolation software and wants a vendor now.",
+      "why_fit": "w",
+      "why_now": "n",
+      "source_title": "t",
+      "source_url": "https://forum.example.org/t/unrelated-thread",
+      "source_type": "Forum",
+      "signal_date": "2026-09-01",
+      "suggested_channel": "Forum reply",
+      "opener": "Heard you have budget for fixture isolation software this year.",
+      "caution": "c",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 4,
+        "timing": 4,
+        "reachability": 3,
+        "evidence_quality": 3
+      }
+    }
+  ]
+}
