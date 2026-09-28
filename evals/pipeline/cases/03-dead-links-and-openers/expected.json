@@ -1,0 +1,21 @@
+{
+  "validate_errors": [],
+  "verify_exit": 1,
+  "prospects": {
+    "individuals/Rescued By Wayback": {
+      "tier": "verified",
+      "note_contains": "Wayback archive (20260801)",
+      "opener_flagged": false,
+      "in_handoff": true
+    },
+    "individuals/Dead Link": {
+      "tier": "broken",
+      "in_handoff": false
+    },
+    "individuals/Reddit Poster": {
+      "tier": "snippet_only",
+      "opener_flagged": true,
+      "in_handoff": true
+    }
+  }
+}

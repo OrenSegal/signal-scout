@@ -1,0 +1,10 @@
+{
+  "https://forum.example.org/t/flaky-ci-fixtures": {
+    "status": 200,
+    "text": "Thread: flaky CI. Our CI goes red twice a week because test fixtures leak state between runs, and I would pay for a tool that tells me which fixture did it. The rest of this page is ordinary thread text: people compare runners, paste stack traces, argue about retries, and link to older issues about parallel test execution and shared temp directories."
+  },
+  "https://forum.example.org/t/unrelated-thread": {
+    "status": 200,
+    "text": "Thread about keyboard layouts. Someone prefers split boards, another person likes low profile switches, and a long discussion follows about wrist angle, tenting kits, and whether thumb clusters help typing speed over a month."
+  }
+}
