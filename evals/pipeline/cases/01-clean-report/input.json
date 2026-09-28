@@ -1,0 +1,88 @@
+{
+  "title": "Pipeline eval fixture",
+  "product": "FixtureGuard",
+  "product_url": "https://fixtureguard.example.com",
+  "target_customer": "maintainers of test tooling",
+  "search_scope": "fixture only, not a real run",
+  "generated_at": "2026-09-27",
+  "verdict": "fixture",
+  "outreach_plan": {
+    "angle": "fixture"
+  },
+  "limits": [
+    "Synthetic fixture for evals/pipeline, not research output"
+  ],
+  "individuals": [
+    {
+      "name": "Dana Park",
+      "stage": "High intent",
+      "score": 74,
+      "pain_signal": "flaky CI from leaking fixtures",
+      "evidence": "Our CI goes red twice a week because test fixtures leak state between runs, and I would pay for a tool that tells me which fixture did it.",
+      "why_fit": "w",
+      "why_now": "n",
+      "source_title": "t",
+      "source_url": "https://forum.example.org/t/flaky-ci-fixtures",
+      "source_type": "Forum",
+      "signal_date": "2026-09-01",
+      "suggested_channel": "Forum reply",
+      "opener": "Saw your post about test fixtures leaking state between runs and turning CI red. Want to try a tool that names the fixture?",
+      "caution": "c",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 4,
+        "timing": 4,
+        "reachability": 3,
+        "evidence_quality": 3
+      }
+    }
+  ],
+  "segments": [
+    {
+      "name": "Maintainers of small test libraries",
+      "stage": "Problem aware",
+      "score": 72,
+      "pain_signal": "p",
+      "evidence": "Maintainers of small testing libraries lose weekends to flaky suites caused by shared state.",
+      "why_fit": "w",
+      "why_now": "n",
+      "source_title": "t",
+      "source_url": "https://blog.example.org/maintainer-survey",
+      "source_type": "Blog",
+      "signal_date": "2026-09-01",
+      "content_angle": "write-up on isolating fixtures",
+      "caution": "c",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 4,
+        "timing": 3,
+        "evidence_quality": 3
+      }
+    }
+  ],
+  "companies": [
+    {
+      "name": "Example Plugin Directory",
+      "stage": "Trigger present",
+      "score": 70,
+      "pain_signal": "p",
+      "evidence": "We are opening our plugin directory to third-party test tooling vendors this quarter and will feature early partners on the launch page.",
+      "why_fit": "w",
+      "why_now": "n",
+      "source_title": "t",
+      "source_url": "https://plugins.example.org/changelog",
+      "source_type": "Changelog",
+      "signal_date": "2026-09-01",
+      "execution_path": "partner listing",
+      "contact_path": "partners page",
+      "bd_angle": "b",
+      "caution": "c",
+      "dimensions": {
+        "strategic_fit": 4,
+        "timing": 3,
+        "execution_ease": 3,
+        "evidence_quality": 4
+      }
+    }
+  ]
+}

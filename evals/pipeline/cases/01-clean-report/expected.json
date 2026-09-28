@@ -1,0 +1,22 @@
+{
+  "validate_errors": [],
+  "verify_exit": 0,
+  "prospects": {
+    "individuals/Dana Park": {
+      "computed_score": 74,
+      "tier": "verified",
+      "opener_flagged": false,
+      "in_handoff": true
+    },
+    "segments/Maintainers of small test libraries": {
+      "computed_score": 72,
+      "tier": "low_match",
+      "in_handoff": true
+    },
+    "companies/Example Plugin Directory": {
+      "computed_score": 70,
+      "tier": "verified",
+      "in_handoff": true
+    }
+  }
+}

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Correction to 1.6.2: the litmus suite in `evals/` does not catch regressions in the skill's behavior. Its "runs" are hand-written example outputs, and CI grades those same files against a baseline on every push, so a change to the skill cannot change the result. It now runs under a name that says so, and `evals/README.md` explains how to record real runs with `litmus capture`.
+- Added `evals/pipeline/`: CI runs the deterministic code (`finalize.validate`, `compute_score`, `verify_sources.py` with the network replaced by saved pages) on fixture inputs and compares the outputs to expected results. A regression in scoring, schema validation, verification tiers, opener grounding, or handoff filtering now fails CI. The LLM steps (finding and classifying prospects, rating dimensions, writing openers) are still not covered.
+
 ## 1.6.2
 
 - Added skill-behavior evals: `evals/` (ported from litmus's own signal-scout case study) gated in CI via `litmus gate` against a checked-in baseline — regression detection on the skill's actual output (individual/segment classification, schema, opener rules), not just script-level unit tests.

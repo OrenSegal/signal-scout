@@ -26,7 +26,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+      - name: Pipeline evals (runs finalize/verify/scoring code on fixture inputs, offline)
+        run: python3 evals/pipeline/run.py -v
       - name: Install litmus
         run: pip install git+https://github.com/OrenSegal/litmus.git
-      - name: Gate skill-behavior evals against baseline
+      - name: Grader check on hand-written example outputs (does not run the skill)
         run: python3 -m litmus.cli gate evals --baseline evals/baseline.json
