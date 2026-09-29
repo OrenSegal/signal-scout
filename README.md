@@ -29,7 +29,7 @@ For a full worked example, see [`examples/finder-report.json`](examples/finder-r
 
 In most AI prospecting flows, the model that writes a claim about a prospect also grades its own confidence in that claim, and nothing makes it reopen the source. A self-graded `evidence_quality` score can't catch a bad claim for that reason.
 
-`scripts/verify_sources.py` closes that gap. It fetches every cited URL and checks that the cited evidence is on the page, rather than paraphrased from a search snippet or invented. When the live page won't load, it tries a Wayback Machine or archive.ph copy; a bot-walled source with no archive is marked snippet-only instead of verified. When the source loads but doesn't contain the claim, the prospect is tagged **Not on page**, the run fails, and that prospect never reaches the report. The script also:
+`scripts/verify_sources.py` closes that gap. It fetches every cited URL and checks that the cited evidence is on the page, rather than paraphrased from a search snippet or invented. When the live page won't load, it tries a Wayback Machine or archive.ph copy; a bot-walled source with no archive is marked snippet-only instead of verified. When the source loads but doesn't contain the claim, the prospect is tagged **Not on page** and `finalize.py` stops before writing any report. The handoff file leaves that prospect out. The script also:
 
 - runs on every report,
 - stamps each prospect with `verified_at` so the report can show how old each check is,
