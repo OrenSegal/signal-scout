@@ -16,6 +16,26 @@ signal-scout is compliant-by-construction with the tightening GDPR/CCPA stance o
 - **Data minimization by design.** A report contains what a person or company published publicly, quoted minimally, plus analysis. No profile assembly beyond the cited signal.
 - **Auditability.** Every report logs the queries issued and sources consulted, so the research process is reproducible and reviewable.
 
+## People data and no-people mode
+
+A report can name individuals: the Individuals section, plus any name, handle, or profile link that turns up in an evidence quote. Three rules govern where that data may appear:
+
+1. **Every public or directory surface is Companies and Segments only.** That covers the Claude plugin directory, MCP registries, Apify, and any hosted demo.
+2. **A public proof page never carries Individuals.** Individuals live only in the client-gated deliverable.
+3. **The paid private report keeps Individuals for now, and only until a privacy lawyer reviews it.** The buyer is the controller for any outreach. If the review says the Individuals section makes the seller a data broker, or needs GDPR Art. 14 notices that cannot be met, Individuals are cut from the paid report too.
+
+The hard filter that enforces rules 1 and 2 is `finalize.py --no-people` (or `"people": false` in the analysis JSON). The MCP server (`mcp-server/server.py`) applies it by default; a caller must pass `people=True` to get Individuals. `--focus companies` is not a filter: it only prioritizes companies, so people can still appear.
+
+What the filter does:
+
+- Drops the `individuals` array before source verification, so no person is fetched or verified.
+- Drops any Segment, Company, or battlecard entry whose own source is a personal profile or a post under a personal account (LinkedIn `/in/`, X/Twitter, Instagram, Facebook, TikTok, Threads, Reddit `/user/`, Hacker News user pages, bare GitHub profiles, Bluesky profiles, `/@name` pages).
+- After verification, redacts from every remaining string: the names and handles of the dropped Individuals, any `@handle` or `u/handle`, personal email addresses (shared role inboxes such as `partners@` stay), and personal profile URLs. Source lists lose any entry that is only a profile URL.
+- Adds a line to `limits` saying how many Individuals, prospects, and references were removed.
+- Writes the filtered JSON, `handoff.json`, the HTML report, and `prospects.csv` to a `public/` folder. The input file is left untouched and is private working data: never publish it.
+
+What it does not do: it is pattern matching plus removal of names the analysis recorded as Individuals, not named-entity recognition. A person mentioned only by a bare name inside a quote, who was never recorded as an Individual, is not detected. In no-people mode the skill is told not to write such names, but check a public report by eye before publishing it.
+
 ## What the user is still responsible for
 
 signal-scout produces research; the user performs the outreach. When contacting a prospect:

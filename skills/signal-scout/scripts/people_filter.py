@@ -1,0 +1,259 @@
+#!/usr/bin/env python3
+"""No-people mode: strip named people from a signal-scout analysis.
+
+Public surfaces (plugin directories, MCP registries, Apify, proof pages) must
+carry zero named people. `--focus companies` only prioritizes; this module is
+the hard filter that finalize.py and mcp-server/server.py both call.
+
+Two phases, because source verification fuzzy-matches `evidence` against the
+live page and redacting a quote first could fail a real claim:
+
+  1. drop_people(data)        before verification. Removes the `individuals`
+                              array and any segment, company, or battlecard
+                              entry whose own `source_url` is a personal
+                              profile or personal post (the link itself names
+                              the person). Returns the names to redact later.
+  2. redact_people(obj, names) after verification. Walks every string in the
+                              JSON and replaces known Individual names,
+                              @handles, u/handles, personal emails, and
+                              personal profile URLs. List items that are only
+                              a personal URL are removed outright.
+
+strip_people(data) runs both phases in one call for callers that do not
+verify in between (generate_report.py, tests).
+
+Boundary, stated plainly: this is pattern matching plus removal of the names
+the analysis itself recorded as Individuals. It is not named-entity
+recognition. A person mentioned only by a bare name inside a quote, who was
+never recorded as an Individual, is not detected.
+"""
+
+from __future__ import annotations
+
+import copy
+import re
+from typing import Any
+from urllib.parse import parse_qs, urlparse
+
+NAME_PLACEHOLDER = "[person removed]"
+URL_PLACEHOLDER = "[profile link removed]"
+EMAIL_PLACEHOLDER = "[email removed]"
+
+PEOPLE_LIMITS_PREFIX = "No-people mode:"
+
+URL_RE = re.compile(r"https?://[^\s<>\"'()\[\]{}]+")
+EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+\b")
+HANDLE_RE = re.compile(r"(?<![\w@./])@[A-Za-z0-9_](?:[A-Za-z0-9_.-]{0,48}[A-Za-z0-9_])?")
+REDDIT_USER_RE = re.compile(r"(?<![\w/])/?u/[A-Za-z0-9_-]{2,30}\b")
+
+# Shared role inboxes are a published company channel, not a person.
+ROLE_INBOXES = {
+    "partners", "partnerships", "partner", "bd", "bizdev", "sales", "hello", "info",
+    "contact", "support", "press", "media", "team", "developers", "devrel", "integrations",
+}
+
+# Hosts where any path below the root is an account (person or brand). Strict on
+# purpose: a company account post cited as a source is dropped too.
+ACCOUNT_HOSTS = {
+    "twitter.com", "x.com", "instagram.com", "facebook.com", "tiktok.com",
+    "threads.net", "threads.com",
+}
+ACCOUNT_HOST_NON_PROFILE = {"", "i", "home", "search", "hashtag", "explore", "intent", "share", "about", "tos", "privacy"}
+
+
+def _host(parsed) -> str:
+    host = (parsed.hostname or "").lower()
+    return host[4:] if host.startswith("www.") else host
+
+
+def is_personal_url(url: str) -> bool:
+    """True when the URL is a person's profile or a post under a person's
+    account, i.e. the link itself identifies someone."""
+    try:
+        parsed = urlparse(url.strip())
+    except ValueError:
+        return False
+    host = _host(parsed)
+    if not host:
+        return False
+    segments = [s for s in parsed.path.split("/") if s]
+    first = segments[0].lower() if segments else ""
+
+    if host.endswith("linkedin.com"):
+        return first in {"in", "pub"}
+    if host in ACCOUNT_HOSTS:
+        return first not in ACCOUNT_HOST_NON_PROFILE
+    if host.endswith("reddit.com"):
+        return first in {"user", "u"}
+    if host == "news.ycombinator.com":
+        return parsed.path.rstrip("/") in {"/user", "/submitted", "/threads"} and "id" in parse_qs(parsed.query)
+    if host == "github.com":
+        # A bare github.com/<name> is a user (or org) profile; repo and issue
+        # URLs carry two or more segments and stay.
+        return len(segments) == 1
+    if host == "bsky.app":
+        return first == "profile"
+    if host in {"youtube.com", "medium.com"} or first.startswith("@"):
+        # medium.com/@x, youtube.com/@x, mastodon-style host/@x
+        return first.startswith("@")
+    return False
+
+
+def collect_person_names(data: dict[str, Any]) -> list[str]:
+    """Every string that names an Individual: the `name` itself, the part before
+    a parenthetical (`Jane Doe (@jdoe)`), and any handle inside it."""
+    names: set[str] = set()
+    for item in data.get("individuals") or []:
+        if not isinstance(item, dict):
+            continue
+        raw = str(item.get("name") or "").strip()
+        if not raw:
+            continue
+        names.add(raw)
+        base = re.split(r"\s*[(\[|,]", raw, maxsplit=1)[0].strip()
+        if base:
+            names.add(base)
+        for handle in HANDLE_RE.findall(raw) + REDDIT_USER_RE.findall(raw):
+            names.add(handle.lstrip("/"))
+            names.add(handle.lstrip("/@").removeprefix("u/"))
+    # Longest first so "Jane Doe" is replaced before "Jane".
+    return sorted((n for n in names if len(n) >= 3), key=len, reverse=True)
+
+
+def drop_people(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Phase 1 (pre-verification). Returns (copy without person records, stats).
+    stats["names"] carries what redact_people needs in phase 2."""
+    out = copy.deepcopy(data)
+    names = collect_person_names(out)
+    individuals = out.pop("individuals", None) or []
+    dropped_for_source: list[str] = []
+    for kind in ("segments", "companies"):
+        items = out.get(kind)
+        if not isinstance(items, list):
+            continue
+        kept = []
+        for item in items:
+            if isinstance(item, dict) and is_personal_url(str(item.get("source_url") or "")):
+                dropped_for_source.append(f"{kind}:{item.get('name', '')}")
+                continue
+            kept.append(item)
+        if kept:
+            out[kind] = kept
+        else:
+            out.pop(kind, None)
+    ctx = out.get("competitive_context")
+    if isinstance(ctx, dict) and isinstance(ctx.get("battlecard"), list):
+        kept_cards = []
+        for entry in ctx["battlecard"]:
+            if isinstance(entry, dict) and is_personal_url(str(entry.get("source_url") or "")):
+                dropped_for_source.append(f"battlecard:{entry.get('competitor', '')}")
+                continue
+            kept_cards.append(entry)
+        ctx["battlecard"] = kept_cards
+    out["people"] = False
+    stats = {
+        "names": names,
+        "individuals_removed": len(individuals),
+        "dropped_for_personal_source": len(dropped_for_source),
+        "redactions": 0,
+    }
+    return out, stats
+
+
+def _redact_plain(text: str, name_res: list[re.Pattern[str]]) -> tuple[str, int]:
+    count = 0
+
+    def email_sub(match: re.Match[str]) -> str:
+        nonlocal count
+        if match.group(0).split("@", 1)[0].lower() in ROLE_INBOXES:
+            return match.group(0)
+        count += 1
+        return EMAIL_PLACEHOLDER
+
+    text = EMAIL_RE.sub(email_sub, text)
+    for pattern in name_res:
+        text, n = pattern.subn(NAME_PLACEHOLDER, text)
+        count += n
+    for pattern in (HANDLE_RE, REDDIT_USER_RE):
+        text, n = pattern.subn(NAME_PLACEHOLDER, text)
+        count += n
+    return text, count
+
+
+def redact_text(text: str, names: list[str]) -> tuple[str, int]:
+    """Redact one string. URLs are handled whole (a non-personal URL is never
+    edited, so citations to threads, repos, and company pages stay intact)."""
+    name_res = [re.compile(r"(?<![\w@])" + re.escape(n) + r"(?!\w)", re.IGNORECASE) for n in names]
+    pieces: list[str] = []
+    count = 0
+    last = 0
+    for match in URL_RE.finditer(text):
+        chunk, n = _redact_plain(text[last:match.start()], name_res)
+        pieces.append(chunk)
+        count += n
+        url = match.group(0)
+        if is_personal_url(url.rstrip(".,;:!?")):
+            pieces.append(URL_PLACEHOLDER)
+            count += 1
+        else:
+            pieces.append(url)
+        last = match.end()
+    chunk, n = _redact_plain(text[last:], name_res)
+    pieces.append(chunk)
+    count += n
+    return "".join(pieces), count
+
+
+def redact_people(obj: Any, names: list[str]) -> tuple[Any, int]:
+    """Phase 2 (post-verification). Recursively redacts every string; drops list
+    items that are nothing but a personal profile URL. Returns (copy, count)."""
+    if isinstance(obj, str):
+        return redact_text(obj, names)
+    if isinstance(obj, list):
+        out_list = []
+        total = 0
+        for item in obj:
+            if isinstance(item, str) and URL_RE.fullmatch(item.strip()) and is_personal_url(item.strip()):
+                total += 1
+                continue
+            value, n = redact_people(item, names)
+            out_list.append(value)
+            total += n
+        return out_list, total
+    if isinstance(obj, dict):
+        out_dict = {}
+        total = 0
+        for key, value in obj.items():
+            out_dict[key], n = redact_people(value, names)
+            total += n
+        return out_dict, total
+    return obj, 0
+
+
+def add_limits_note(data: dict[str, Any], stats: dict[str, Any]) -> None:
+    """Disclose what the filter removed, once (re-runs replace the old note)."""
+    note = (
+        f"{PEOPLE_LIMITS_PREFIX} {stats['individuals_removed']} Individual(s) removed, "
+        f"{stats['dropped_for_personal_source']} prospect(s) dropped because their only source "
+        f"is a personal profile or post, {stats['redactions']} person reference(s) redacted from text. "
+        "This report names no people."
+    )
+    limits = [x for x in (data.get("limits") or []) if not str(x).startswith(PEOPLE_LIMITS_PREFIX)]
+    limits.append(note)
+    data["limits"] = limits
+
+
+def has_prospects(data: dict[str, Any]) -> bool:
+    return any(data.get(k) for k in ("individuals", "segments", "companies"))
+
+
+def strip_people(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Both phases in one call, for callers that do not verify in between.
+    Adds the `limits` disclosure only when something was removed, so running it
+    again on already-filtered data keeps the original note."""
+    dropped, stats = drop_people(data)
+    redacted, count = redact_people(dropped, stats["names"])
+    stats["redactions"] = count
+    if stats["individuals_removed"] or stats["dropped_for_personal_source"] or count:
+        add_limits_note(redacted, stats)
+    return redacted, stats

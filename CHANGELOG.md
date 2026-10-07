@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added no-people mode, the hard filter for public output. `finalize.py --no-people` (or `"people": false` in the analysis JSON) drops Individuals before verification, drops prospects whose only source is a personal profile or post, redacts person names, handles, personal emails, and profile URLs from every other section after verification, and writes all outputs to `public/` without touching the input. `generate_report.py` honors `"people": false` too. The shared logic is `scripts/people_filter.py`. `--focus companies` still only prioritizes.
+- MCP server: both tools take `people` (default `False`), so the server names no one unless asked. `focus="individuals"` requires `people=True`.
+- Fixed: the MCP server called `verify_sources.py --apply`, a flag that does not exist, so verification never ran. It now passes `--annotate-out` and `--handoff-out` as its README already said.
+- Added an optional Company `domain` field, validated as a bare domain and exported as a `domain` CSV column (finalize CSV and the HTML Export CSV), for Clay and CRM matching.
+- Fixed version drift: the plugin manifests said 1.6.1 while `package.json` said 1.6.2.
+
 - Correction to 1.6.2: the litmus suite in `evals/` does not catch regressions in the skill's behavior. Its "runs" are hand-written example outputs, and CI grades those same files against a baseline on every push, so a change to the skill cannot change the result. It now runs under a name that says so, and `evals/README.md` explains how to record real runs with `litmus capture`.
 - Added `evals/pipeline/`: CI runs the deterministic code (`finalize.validate`, `compute_score`, `verify_sources.py` with the network replaced by saved pages) on fixture inputs and compares the outputs to expected results. A regression in scoring, schema validation, verification tiers, opener grounding, or handoff filtering now fails CI. The LLM steps (finding and classifying prospects, rating dimensions, writing openers) are still not covered.
 

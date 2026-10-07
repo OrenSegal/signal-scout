@@ -31,6 +31,18 @@ caller already has:
 
 Both funnel into the same downstream pipeline (below).
 
+## No named people by default
+
+Both tools take `people: bool = False`. With the default, the server returns
+Segments and Companies only: it drops every Individual before verification,
+then redacts person names, @handles, u/handles, personal emails, and profile
+URLs from every other field, from `handoff-<date>.json`, and from the
+verification text it returns. A segment, company, or battlecard entry whose
+only source is a personal profile or a post under a personal account is
+dropped. `focus="individuals"` is refused unless `people=True`. Pass
+`people=True` only for a private, client-gated run, never for a server that
+other people's agents can reach. Details and limits: [COMPLIANCE.md](../COMPLIANCE.md).
+
 ## What it does
 
 1. Runs a Claude Sonnet 5 agent — either researching from scratch
@@ -41,7 +53,8 @@ Both funnel into the same downstream pipeline (below).
 2. Writes the result to `analysis-<date>.json`.
 3. Runs `verify_sources.py` with `--annotate-out`/`--handoff-out` (drops
    broken/not-on-page prospects, tags bot-walled ones) — the same script the
-   human-facing skill uses.
+   human-facing skill uses. In the default no-people mode, Individuals are
+   dropped before this step and person references are redacted after it.
 4. Runs `generate_report.py` to produce the standalone HTML report.
 5. Logs token usage and an estimated cost to `usage.jsonl`.
 

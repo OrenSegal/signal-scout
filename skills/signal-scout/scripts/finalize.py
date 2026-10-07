@@ -9,7 +9,14 @@ few output lines instead of four calls and four transcripts.
 
 Usage:
     python3 finalize.py analysis.json [--out report.html] [--validate-only]
-        [--skip-verify] [--no-csv] [--timeout 10]
+        [--skip-verify] [--no-csv] [--no-people] [--timeout 10]
+
+No-people mode (--no-people, or `"people": false` in the input JSON) is the
+hard filter for public output: Individuals are dropped before verification,
+person names, handles, emails, and profile URLs are redacted from every other
+section after it, and every output (filtered JSON, handoff.json, HTML, CSV)
+goes to a `public/` folder next to the input. The input file is not modified.
+The cross-run diff is skipped in this mode.
 
 Steps (each skippable/failable independently):
   1. validate  — top-level required fields + per-prospect schema via
@@ -34,10 +41,12 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
+from people_filter import add_limits_note, drop_people, has_prospects, redact_people
 from signal_scout_core import (
     TIER_LABELS,
     TIER_VERIFIED,
@@ -54,9 +63,12 @@ REQUIRED_TOP_LEVEL = (
 
 PROSPECT_KINDS = {"individuals": "individual", "segments": "segment", "companies": "company"}
 
+# Bare registrable domain, the key Clay and CRMs match company records on.
+DOMAIN_RE = re.compile(r"^(?=.{4,253}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$")
+
 # Same columns as the HTML report's Export CSV button (report-artifact.md).
 CSV_COLUMNS = (
-    "type", "name", "stage", "score", "verification", "pain_signal", "why_fit",
+    "type", "name", "domain", "stage", "score", "verification", "pain_signal", "why_fit",
     "why_now", "source_title", "source_url", "source_type", "signal_date",
     "next_action", "caution",
 )
@@ -89,6 +101,10 @@ def validate(data: dict) -> list[str]:
                         )
                 except (TypeError, ValueError):
                     pass
+            if kind == "companies" and item.get("domain") not in (None, ""):
+                if not DOMAIN_RE.match(str(item.get("domain"))):
+                    errors.append(f"{kind}[{i}] ({name}): domain must be a bare lowercase domain like "
+                                  f"'acme.com' (no scheme or path), got {item.get('domain')!r}")
             if kind == "companies" and item.get("tier") is not None:
                 if item.get("tier") not in (1, 2, 3):
                     errors.append(f"{kind}[{i}] ({name}): tier must be 1, 2, or 3, got {item.get('tier')!r}")
@@ -140,6 +156,7 @@ def write_csv(data: dict, out_path: Path) -> int:
                 writer.writerow([
                     prospect_type,
                     item.get("name", ""),
+                    item.get("domain") or "",
                     item.get("stage", ""),
                     item.get("score", ""),
                     TIER_LABELS.get(item.get("verification_tier", ""), item.get("verification_tier", "")),
@@ -157,6 +174,21 @@ def write_csv(data: dict, out_path: Path) -> int:
     return rows
 
 
+def finish_people_filter(path: Path, data: dict, stats: dict, handoff: Path | None = None) -> dict:
+    """Phase 2 of no-people mode, after verification: redact person references
+    from every string, disclose it in `limits`, and rewrite the public JSON and
+    handoff (verify_sources wrote both from the unredacted text)."""
+    redacted, count = redact_people(data, stats["names"])
+    stats["redactions"] = count
+    add_limits_note(redacted, stats)
+    path.write_text(json.dumps(redacted, indent=2), encoding="utf-8")
+    if handoff is not None and handoff.exists():
+        handoff_data, _ = redact_people(json.loads(handoff.read_text(encoding="utf-8")), stats["names"])
+        add_limits_note(handoff_data, stats)
+        handoff.write_text(json.dumps(handoff_data, indent=2), encoding="utf-8")
+    return redacted
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("input", type=Path, help="Path to analysis.json")
@@ -167,14 +199,18 @@ def main() -> None:
     parser.add_argument("--skip-verify", action="store_true",
                         help="Skip source verification (offline/dry runs only — never for a shipped report)")
     parser.add_argument("--no-csv", action="store_true", help="Skip prospects.csv export")
+    parser.add_argument("--no-people", action="store_true",
+                        help="Hard filter for public output: no Individuals, no person names, handles, "
+                        "or profile URLs anywhere; outputs go to <input dir>/public/. Also on when the "
+                        "input JSON has \"people\": false")
     parser.add_argument("--timeout", type=int, default=10, help="Per-fetch timeout for verification")
     args = parser.parse_args()
 
     input_path = args.input.resolve()
     workdir = input_path.parent
-    out_html = args.out or workdir / "signal-scout-report.html"
 
     data = json.loads(input_path.read_text(encoding="utf-8"))
+    no_people = args.no_people or data.get("people") is False
     errors = validate(data)
     if errors:
         print(f"VALIDATION FAILED — {len(errors)} problem(s):")
@@ -183,8 +219,28 @@ def main() -> None:
         sys.exit(1)
     total = sum(len(data.get(kind) or []) for kind in PROSPECT_KINDS)
     print(f"validate: OK — {total} prospect(s), schema and scores consistent")
+
+    people_stats: dict = {}
+    if no_people:
+        data, people_stats = drop_people(data)
+        print(f"no-people: {people_stats['individuals_removed']} Individual(s) and "
+              f"{people_stats['dropped_for_personal_source']} prospect(s) with a personal-profile source removed")
+        if not has_prospects(data):
+            print("no-people: FAILED, no Segments or Companies left to report. A public report needs at "
+                  "least one prospect that is not a person.")
+            sys.exit(1)
     if args.validate_only:
         return
+
+    if no_people:
+        # Never edit the private draft in place: the filtered copy and every
+        # output built from it live in public/, which is the folder to publish.
+        if workdir.name != "public":
+            workdir = workdir / "public"
+        workdir.mkdir(parents=True, exist_ok=True)
+        input_path = workdir / input_path.name
+        input_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    out_html = args.out or workdir / "signal-scout-report.html"
 
     if not args.skip_verify:
         handoff = workdir / "handoff.json"
@@ -197,6 +253,8 @@ def main() -> None:
         # Re-read the annotated JSON rather than parsing the verifier's table —
         # print only what needs action, not every verified row.
         data = json.loads(input_path.read_text(encoding="utf-8"))
+        if no_people:
+            data = finish_people_filter(input_path, data, people_stats, handoff)
         counts: dict[str, int] = {}
         for kind in PROSPECT_KINDS:
             for item in data.get(kind) or []:
@@ -227,6 +285,10 @@ def main() -> None:
             sys.exit(1)
     else:
         print("verify: SKIPPED (--skip-verify) — do not ship this report")
+        if no_people:
+            data = finish_people_filter(input_path, data, people_stats)
+    if no_people:
+        print(f"no-people: {people_stats['redactions']} person reference(s) redacted; publish only {workdir}")
 
     code, output = run_step("report", [
         sys.executable, str(SCRIPTS_DIR / "generate_report.py"), str(input_path), str(out_html),
@@ -241,7 +303,9 @@ def main() -> None:
         print(f"csv: {rows} prospect(s) written to {csv_path} (CRM-import ready)")
 
     siblings = sorted(p for p in workdir.glob("analysis-*.json") if p.resolve() != input_path)
-    if siblings:
+    if siblings and no_people:
+        print("diff: SKIPPED in no-people mode (prior snapshots may name people)")
+    elif siblings:
         cmd = [sys.executable, str(SCRIPTS_DIR / "diff_reports.py"), *map(str, siblings), str(input_path)]
         outcomes = workdir / "outcomes.jsonl"
         if outcomes.exists():
