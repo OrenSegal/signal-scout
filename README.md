@@ -114,6 +114,20 @@ With modes:
 
 **Modes:** `--depth` quick (≤5 total) · standard (≤10, default) · deep (≤20), combined with `--focus` all (default) · individuals · segments · companies · competitor-chasers · design-partners
 
+`--focus` only prioritizes. For output that names no one, add `--no-people` (see below).
+
+## No-people mode (public output)
+
+Anything public, such as a directory listing, a registry demo, or a sample proof page, must name no people. `--focus companies` does not guarantee that, so there is a hard filter:
+
+```bash
+python3 skills/signal-scout/scripts/finalize.py analysis.json --no-people
+```
+
+It drops the Individuals section, removes any prospect whose only source is a personal profile or post, and redacts person names, handles, personal emails, and profile URLs from evidence quotes and every other section. All outputs go to a `public/` folder next to the input; the input is not modified. Setting `"people": false` in the JSON does the same. The MCP server uses this mode by default.
+
+The paid private report still includes Individuals, delivered only to the client, until a privacy lawyer has reviewed it. [COMPLIANCE.md](COMPLIANCE.md) has the rules and the filter's limits.
+
 ## One-command pipeline
 
 Every script uses only the Python 3.10+ standard library and runs without an agent. `finalize.py` chains the whole finishing flow into one call and prints a condensed summary. The steps are schema validation, source verification, the HTML report, a CRM-ready `prospects.csv`, and the cross-run diff when prior snapshots exist:
@@ -121,6 +135,8 @@ Every script uses only the Python 3.10+ standard library and runs without an age
 ```bash
 python3 skills/signal-scout/scripts/finalize.py analysis.json --out outputs/signal-scout-report.html
 ```
+
+Company records can carry an optional `domain` (for example `acme.com`), exported as a `domain` column so Clay and CRMs can match companies on import.
 
 During drafting, `--validate-only` checks the JSON (required fields, dimension sets, score arithmetic) without touching the network. Each script (`verify_sources.py`, `generate_report.py`, `diff_reports.py`, `portfolio_merge.py`, `recalibrate.py`, `log_outcome.py`) can also run on its own:
 
@@ -138,7 +154,7 @@ python3 skills/signal-scout/scripts/generate_report.py analysis.json outputs/sig
 
 ## MCP server
 
-[`mcp-server/`](mcp-server/) wraps the research workflow as a tool other agents can call. See [`mcp-server/README.md`](mcp-server/README.md) for setup and for what is tested and what isn't.
+[`mcp-server/`](mcp-server/) wraps the research workflow as a tool other agents can call. It returns no named people unless the caller passes `people=True`. See [`mcp-server/README.md`](mcp-server/README.md) for setup and for what is tested and what isn't.
 
 ## Dependencies
 
