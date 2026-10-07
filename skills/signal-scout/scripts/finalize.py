@@ -39,11 +39,14 @@ not-on-page claim), or report-generation failure.
 from __future__ import annotations
 
 import argparse
+import atexit
 import csv
 import json
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from people_filter import add_limits_note, drop_people, has_prospects, redact_people
@@ -183,10 +186,12 @@ def write_csv(data: dict, out_path: Path) -> int:
     return rows
 
 
-def finish_people_filter(path: Path, data: dict, stats: dict, handoff: Path | None = None) -> dict:
+def finish_people_filter(
+    path: Path, data: dict, stats: dict, handoff: Path | None = None, handoff_out: Path | None = None
+) -> dict:
     """Phase 2 of no-people mode, after verification: redact person references
-    from every string, disclose it in `limits`, and rewrite the public JSON and
-    handoff (verify_sources wrote both from the unredacted text)."""
+    from every string, disclose it in `limits`, and write the public JSON to
+    `path` and the redacted handoff to `handoff_out` (default: over `handoff`)."""
     redacted, count = redact_people(data, stats["names"])
     stats["redactions"] = count
     add_limits_note(redacted, stats)
@@ -194,7 +199,7 @@ def finish_people_filter(path: Path, data: dict, stats: dict, handoff: Path | No
     if handoff is not None and handoff.exists():
         handoff_data, _ = redact_people(json.loads(handoff.read_text(encoding="utf-8")), stats["names"])
         add_limits_note(handoff_data, stats)
-        handoff.write_text(json.dumps(handoff_data, indent=2), encoding="utf-8")
+        (handoff_out or handoff).write_text(json.dumps(handoff_data, indent=2), encoding="utf-8")
     return redacted
 
 
@@ -242,28 +247,36 @@ def main() -> None:
         return
 
     if no_people:
-        # Never edit the private draft in place: the filtered copy and every
-        # output built from it live in public/, which is the folder to publish.
+        # Never edit the private draft in place. Verification runs on a copy in
+        # a private temp dir; only redacted files are ever written to public/,
+        # the folder to publish, so an interrupted run cannot leave text there.
         if workdir.name != "public":
             workdir = workdir / "public"
         workdir.mkdir(parents=True, exist_ok=True)
-        input_path = workdir / input_path.name
-        input_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        staging = Path(tempfile.mkdtemp(prefix="signal-scout-private-"))
+        atexit.register(shutil.rmtree, staging, True)
+        public_path = workdir / input_path.name
+        verify_path = staging / input_path.name
+        verify_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        input_path = public_path
+    else:
+        verify_path = input_path
     out_html = args.out or workdir / "signal-scout-report.html"
 
     if not args.skip_verify:
         handoff = workdir / "handoff.json"
+        verify_handoff = verify_path.parent / "handoff.json" if no_people else handoff
         code, _output = run_step("verify", [
-            sys.executable, str(SCRIPTS_DIR / "verify_sources.py"), str(input_path),
+            sys.executable, str(SCRIPTS_DIR / "verify_sources.py"), str(verify_path),
             "--timeout", str(args.timeout),
-            "--annotate-out", str(input_path),
-            "--handoff-out", str(handoff),
+            "--annotate-out", str(verify_path),
+            "--handoff-out", str(verify_handoff),
         ])
         # Re-read the annotated JSON rather than parsing the verifier's table —
         # print only what needs action, not every verified row.
-        data = json.loads(input_path.read_text(encoding="utf-8"))
+        data = json.loads(verify_path.read_text(encoding="utf-8"))
         if no_people:
-            data = finish_people_filter(input_path, data, people_stats, handoff)
+            data = finish_people_filter(input_path, data, people_stats, verify_handoff, handoff)
         counts: dict[str, int] = {}
         for kind in PROSPECT_KINDS:
             for item in data.get(kind) or []:

@@ -162,6 +162,7 @@ class PersonalUrlTests(unittest.TestCase):
             THREAD_URL, ISSUE_URL, COMPANY_URL, "https://github.com/acme/repo",
             "https://www.linkedin.com/company/acme", "https://news.ycombinator.com/item?id=1",
             "https://x.com/search?q=ci", "https://notreddit.com/user/x", "https://notx.com/janedoe",
+            "https://notlinkedin.com/in/janedoe",
         ]
         for url in personal:
             self.assertTrue(is_personal_url(url), url)
@@ -484,6 +485,23 @@ class McpServerTests(unittest.TestCase):
         assert_no_leak(self, json.dumps(result), "timeout result")
         assert_no_leak(self, written, "timeout files")
 
+    def test_verify_crash_leaves_no_unredacted_file(self):
+        def crash_run(cmd, **kwargs):
+            if cmd[1].endswith("verify_sources.py"):
+                raise OSError("fork failed")
+            return REAL_RUN(cmd, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(self.server, "OUTPUT_DIR", Path(tmp)), \
+                mock.patch.object(self.server.subprocess, "run", crash_run), \
+                mock.patch.object(self.server, "record_call", lambda **kw: 0.0):
+            with self.assertRaises(OSError):
+                self.server._finish_run(
+                    fixture(), None, product_url="https://ci.example", depth="quick", focus="all", people=False,
+                )
+            written = "".join(p.read_text(encoding="utf-8") for p in Path(tmp).rglob("*") if p.is_file())
+        assert_no_leak(self, written, "files left after a verification crash")
+
     def test_verify_timeout_sized_to_depth(self):
         timeouts = self.server.VERIFY_TIMEOUTS
         self.assertLess(timeouts["quick"], timeouts["standard"])
@@ -549,6 +567,63 @@ class NameMatchingTests(unittest.TestCase):
         self.assertIn("@types/node", out)
         self.assertNotIn("@janedoe", out)
         self.assertTrue(out.endswith("."))
+
+
+class UrlIdentifierTests(unittest.TestCase):
+    """CodeRabbit: a non-personal URL can still carry a recorded name or handle."""
+
+    NAMES = collect_person_names({"individuals": [{"name": "Jane Doe (@janedoe)"}]})
+
+    def test_text_url_with_recorded_handle_is_removed(self):
+        for url in ("https://forum.example.com/t/janedoe-ci-woes/9",
+                    "https://blog.example.com/posts?author=JaneDoe",
+                    "https://news.example.com/2026/jane-doe-on-flaky-ci"):
+            out, n = redact_text(f"See {url} for details.", self.NAMES)
+            self.assertNotIn(url, out, url)
+            self.assertGreater(n, 0)
+
+    def test_unrelated_url_kept(self):
+        out, _ = redact_text(f"See {THREAD_URL}.", self.NAMES)
+        self.assertIn(THREAD_URL, out)
+
+    def test_prospect_sourced_from_url_naming_a_person_is_dropped(self):
+        data = fixture()
+        data["segments"].append(segment("Named thread", "https://forum.example.com/t/janedoe-ci-woes/9", "e"))
+        out, stats = strip_people(data)
+        self.assertNotIn("Named thread", [s["name"] for s in out.get("segments", [])])
+        self.assertNotIn("janedoe", json.dumps(out).lower())
+
+    def test_single_token_handle_case_insensitive(self):
+        out, _ = redact_text("Thanks JaneDoe and JANEDOE.", self.NAMES)
+        self.assertNotIn("janedoe", out.lower())
+
+    def test_full_name_stays_case_sensitive(self):
+        names = collect_person_names({"individuals": [{"name": "Will Smith"}]})
+        out, _ = redact_text("we will smith nothing", names)
+        self.assertEqual(out, "we will smith nothing")
+
+
+class FinalizeInterruptedVerification(unittest.TestCase):
+    """CodeRabbit: if verification is interrupted, public/ must hold nothing unredacted."""
+
+    def test_public_folder_clean_when_verify_interrupted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "analysis-2026-10-06.json"
+            src.write_text(json.dumps(fixture()), encoding="utf-8")
+
+            def interrupted(label, cmd):
+                raise KeyboardInterrupt
+
+            with mock.patch.object(finalize, "run_step", interrupted), \
+                    mock.patch.object(sys, "argv", ["finalize.py", str(src), "--no-people"]), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(KeyboardInterrupt):
+                    finalize.main()
+            public = Path(tmp) / "public"
+            leftovers = [p for p in public.rglob("*") if p.is_file()] if public.exists() else []
+            for path in leftovers:
+                self.assertNotIn("janedoe", path.read_text(encoding="utf-8").lower(), path.name)
+                self.assertNotIn("Jane Doe", path.read_text(encoding="utf-8"), path.name)
 
 
 class RedactPeopleUnit(unittest.TestCase):

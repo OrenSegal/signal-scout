@@ -268,7 +268,20 @@ def _finish_run(
     analysis_path.write_text(json.dumps(analysis, indent=2), encoding="utf-8")
     handoff_path = run_dir / f"handoff-{stamp}.json"
 
+    def _redact_written_files() -> None:
+        nonlocal verification_output
+        verified, count = redact_people(json.loads(analysis_path.read_text(encoding="utf-8")), people_stats["names"])
+        people_stats["redactions"] = count
+        add_limits_note(verified, people_stats)
+        analysis_path.write_text(json.dumps(verified, indent=2), encoding="utf-8")
+        if handoff_path.exists():
+            handoff, _ = redact_people(json.loads(handoff_path.read_text(encoding="utf-8")), people_stats["names"])
+            add_limits_note(handoff, people_stats)
+            handoff_path.write_text(json.dumps(handoff, indent=2), encoding="utf-8")
+        verification_output, _ = redact_text(verification_output, people_stats["names"])
+
     verification_timed_out = False
+    verification_output = ""
     try:
         verify = subprocess.run(
             [
@@ -286,17 +299,14 @@ def _finish_run(
             f"Source verification timed out after {VERIFY_TIMEOUTS[depth]}s. The report is UNVERIFIED: "
             "no claim was checked against its source and no handoff file was written. Do not ship it as verified."
         )
+    except BaseException:
+        # Any other failure: never leave the unredacted pre-verification file behind.
+        if not people:
+            _redact_written_files()
+        raise
 
     if not people:
-        verified, count = redact_people(json.loads(analysis_path.read_text(encoding="utf-8")), people_stats["names"])
-        people_stats["redactions"] = count
-        add_limits_note(verified, people_stats)
-        analysis_path.write_text(json.dumps(verified, indent=2), encoding="utf-8")
-        if handoff_path.exists():
-            handoff, _ = redact_people(json.loads(handoff_path.read_text(encoding="utf-8")), people_stats["names"])
-            add_limits_note(handoff, people_stats)
-            handoff_path.write_text(json.dumps(handoff, indent=2), encoding="utf-8")
-        verification_output, _ = redact_text(verification_output, people_stats["names"])
+        _redact_written_files()
 
     report_path = run_dir / f"report-{stamp}.html"
     generate = subprocess.run(

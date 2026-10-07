@@ -33,7 +33,7 @@ from __future__ import annotations
 import copy
 import re
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 NAME_PLACEHOLDER = "[person removed]"
 URL_PLACEHOLDER = "[profile link removed]"
@@ -142,6 +142,25 @@ def _is_redactable_name(name: str) -> bool:
     return len(token) >= 5 or any(c.isdigit() or c == "_" for c in token)
 
 
+def url_names_person(url: str, names: list[str]) -> bool:
+    """True when a URL that is not a profile still carries a recorded name or
+    handle in its host, path, or query, e.g. /t/janedoe-ci-woes or ?author=JaneDoe.
+    Multi-token names match with any separator (jane-doe, jane_doe, jane%20doe)."""
+    text = unquote(url).lower()
+    for name in names:
+        tokens = [t for t in re.split(r"[^a-z0-9]+", name.lower()) if t]
+        if not tokens:
+            continue
+        joined = r"[^a-z0-9]?".join(re.escape(t) for t in tokens)
+        if re.search(r"(?<![a-z0-9])" + joined + r"(?![a-z0-9])", text):
+            return True
+    return False
+
+
+def _names_url(url: str, names: list[str]) -> bool:
+    return is_personal_url(url) or url_names_person(url, names)
+
+
 def collect_person_names(data: dict[str, Any]) -> list[str]:
     """Every string that names an Individual: the `name` itself, the part before
     a title or employer (`Jane Doe (@jdoe)`, `Jane Doe, CTO`, `Jane Doe at Acme`),
@@ -177,7 +196,7 @@ def drop_people(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
             continue
         kept = []
         for item in items:
-            if isinstance(item, dict) and is_personal_url(str(item.get("source_url") or "")):
+            if isinstance(item, dict) and _names_url(str(item.get("source_url") or ""), names):
                 dropped_for_source.append(f"{kind}:{item.get('name', '')}")
                 continue
             kept.append(item)
@@ -189,7 +208,7 @@ def drop_people(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     if isinstance(ctx, dict) and isinstance(ctx.get("battlecard"), list):
         kept_cards = []
         for entry in ctx["battlecard"]:
-            if isinstance(entry, dict) and is_personal_url(str(entry.get("source_url") or "")):
+            if isinstance(entry, dict) and _names_url(str(entry.get("source_url") or ""), names):
                 dropped_for_source.append(f"battlecard:{entry.get('competitor', '')}")
                 continue
             kept_cards.append(entry)
@@ -227,8 +246,13 @@ def _redact_plain(text: str, name_res: list[re.Pattern[str]]) -> tuple[str, int]
 def redact_text(text: str, names: list[str]) -> tuple[str, int]:
     """Redact one string. URLs are handled whole (a non-personal URL is never
     edited, so citations to threads, repos, and company pages stay intact)."""
-    # Case-sensitive whole words: "Will Smith" is a name, "will smith" is not.
-    name_res = [re.compile(r"(?<![\w@])" + re.escape(n) + r"(?!\w)") for n in names]
+    # Full names match case-sensitively ("Will Smith" is a name, "will smith" is
+    # not). Single tokens are already restricted to distinctive handles, which
+    # platforms treat case-insensitively, so JaneDoe and janedoe both match.
+    name_res = [
+        re.compile(r"(?<![\w@])" + re.escape(n) + r"(?!\w)", re.IGNORECASE if len(n.split()) == 1 else 0)
+        for n in names
+    ]
     pieces: list[str] = []
     count = 0
     last = 0
@@ -237,7 +261,7 @@ def redact_text(text: str, names: list[str]) -> tuple[str, int]:
         pieces.append(chunk)
         count += n
         url = match.group(0)
-        if is_personal_url(url.rstrip(".,;:!?")):
+        if _names_url(url.rstrip(".,;:!?"), names):
             pieces.append(URL_PLACEHOLDER)
             count += 1
         else:
@@ -258,7 +282,7 @@ def redact_people(obj: Any, names: list[str]) -> tuple[Any, int]:
         out_list = []
         total = 0
         for item in obj:
-            if isinstance(item, str) and URL_RE.fullmatch(item.strip()) and is_personal_url(item.strip()):
+            if isinstance(item, str) and URL_RE.fullmatch(item.strip()) and _names_url(item.strip(), names):
                 total += 1
                 continue
             value, n = redact_people(item, names)
