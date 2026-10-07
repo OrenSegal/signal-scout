@@ -14,6 +14,7 @@ import contextlib
 import csv
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -26,9 +27,11 @@ import finalize
 import verify_sources
 from people_filter import (
     NAME_PLACEHOLDER,
+    collect_person_names,
     drop_people,
     is_personal_url,
     redact_people,
+    redact_text,
     strip_people,
 )
 from signal_scout_core import TIER_VERIFIED
@@ -51,6 +54,9 @@ PLANTED = (
     "x.com/janedoe",
     "x.com/someone",
     "bobbuilder",
+    "linkedin.com/posts/",
+    "mobile.twitter.com",
+    "m.facebook.com",
 )
 
 SEGMENT_EVIDENCE = (
@@ -103,7 +109,11 @@ def fixture() -> dict:
         "target_customer": "devops leads", "search_scope": "s", "generated_at": "2026-10-06",
         "verdict": "Strong signal from Jane Doe and others",
         "search_queries_used": ["flaky ci", "from:janedoe ci"],
-        "sources_consulted": [THREAD_URL, "https://www.linkedin.com/in/janedoe", "https://x.com/janedoe"],
+        "sources_consulted": [
+            THREAD_URL, "https://www.linkedin.com/in/janedoe", "https://x.com/janedoe",
+            "https://www.linkedin.com/posts/janedoe_ci-activity-7100",
+            "https://mobile.twitter.com/janedoe/status/5", "https://m.facebook.com/janedoe",
+        ],
         "individuals": [individual()],
         "segments": [
             segment("Teams with flaky CI", THREAD_URL, SEGMENT_EVIDENCE),
@@ -144,11 +154,14 @@ class PersonalUrlTests(unittest.TestCase):
             "https://news.ycombinator.com/user?id=pg", "https://github.com/janedoe",
             "https://bsky.app/profile/jane.bsky.social", "https://medium.com/@jane/post",
             "https://mastodon.social/@jane",
+            "https://www.linkedin.com/posts/janedoe_ci-activity-7100",
+            "https://mobile.twitter.com/janedoe/status/5", "https://m.facebook.com/janedoe",
+            "https://old.reddit.com/user/devguy42",
         ]
         public = [
             THREAD_URL, ISSUE_URL, COMPANY_URL, "https://github.com/acme/repo",
             "https://www.linkedin.com/company/acme", "https://news.ycombinator.com/item?id=1",
-            "https://x.com/search?q=ci",
+            "https://x.com/search?q=ci", "https://notreddit.com/user/x", "https://notx.com/janedoe",
         ]
         for url in personal:
             self.assertTrue(is_personal_url(url), url)
@@ -292,6 +305,66 @@ class FinalizeEndToEnd(unittest.TestCase):
             self.assertIn("no Segments or Companies left", result.stdout)
 
 
+class FinalizeWithVerification(unittest.TestCase):
+    """finalize.py end to end with verification ON, against a local HTTP server."""
+
+    def test_verified_public_outputs_do_not_leak(self):
+        import http.server
+        import threading
+
+        filler = " Unrelated discussion about build caches, runners, and deploy queues." * 12
+        pages = {
+            "/thread": "Some header." + filler + " " + SEGMENT_EVIDENCE + filler,
+            "/partners": "Acme launched a partner program for integrations." + filler,
+            "/issue": "per @janedoe it is slow, and other users agree." + filler,
+        }
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = pages.get(self.path.split("?")[0])
+                if body is None:
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                payload = f"<html><body><p>{body}</p></body></html>".encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, *args):
+                pass
+
+        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{httpd.server_address[1]}"
+        try:
+            data = fixture()
+            data["segments"][0]["source_url"] = base + "/thread"
+            data["companies"][0]["source_url"] = base + "/partners"
+            data["competitive_context"]["battlecard"][0]["source_url"] = base + "/issue"
+            data["sources_consulted"][0] = base + "/thread"
+            with tempfile.TemporaryDirectory() as tmp:
+                src = Path(tmp) / "analysis-2026-10-06.json"
+                src.write_text(json.dumps(data), encoding="utf-8")
+                env = dict(os.environ, NO_PROXY="127.0.0.1", no_proxy="127.0.0.1")
+                for key in ("http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY", "all_proxy", "ALL_PROXY"):
+                    env.pop(key, None)
+                result = subprocess.run(
+                    [sys.executable, str(SCRIPTS / "finalize.py"), str(src), "--no-people", "--timeout", "5"],
+                    capture_output=True, text=True, env=env, timeout=120,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                assert_no_leak(self, result.stdout, "finalize stdout")
+                public = Path(tmp) / "public"
+                for name in (src.name, "handoff.json", "signal-scout-report.html", "prospects.csv"):
+                    assert_no_leak(self, (public / name).read_text(encoding="utf-8"), name)
+                verified = json.loads((public / src.name).read_text(encoding="utf-8"))
+                self.assertEqual(verified["segments"][0]["verification_tier"], TIER_VERIFIED)
+        finally:
+            httpd.shutdown()
+
+
 class GenerateReportDirect(unittest.TestCase):
     def test_people_false_never_renders_a_person(self):
         data = fixture()
@@ -390,6 +463,46 @@ class McpServerTests(unittest.TestCase):
         self.assertEqual(result["individuals"], 1)
         self.assertIn("Jane Doe", written)
 
+    def test_verify_timeout_is_metered_and_flagged(self):
+        metered = []
+
+        def timeout_run(cmd, **kwargs):
+            if cmd[1].endswith("verify_sources.py"):
+                raise subprocess.TimeoutExpired(cmd, kwargs.get("timeout"))
+            return REAL_RUN(cmd, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(self.server, "OUTPUT_DIR", Path(tmp)), \
+                mock.patch.object(self.server.subprocess, "run", timeout_run), \
+                mock.patch.object(self.server, "record_call", lambda **kw: metered.append(kw) or 0.0):
+            result = self.server._finish_run(
+                fixture(), None, product_url="https://ci.example", depth="deep", focus="all", people=False,
+            )
+            written = "".join(p.read_text(encoding="utf-8") for p in Path(tmp).rglob("*") if p.is_file())
+        self.assertEqual(len(metered), 1)
+        self.assertIs(result["verification_timed_out"], True)
+        assert_no_leak(self, json.dumps(result), "timeout result")
+        assert_no_leak(self, written, "timeout files")
+
+    def test_verify_timeout_sized_to_depth(self):
+        timeouts = self.server.VERIFY_TIMEOUTS
+        self.assertLess(timeouts["quick"], timeouts["standard"])
+        self.assertLess(timeouts["standard"], timeouts["deep"])
+
+    def test_domain_normalized_in_mcp_path(self):
+        data = fixture()
+        data["companies"].append(dict(company(), name="Beta", domain="https://www.Beta.io/partners"))
+        data["companies"].append(dict(company(), name="Gamma", domain="not a domain"))
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(self.server, "OUTPUT_DIR", Path(tmp)), \
+                    mock.patch.object(self.server.subprocess, "run", self.fake_run), \
+                    mock.patch.object(self.server, "record_call", lambda **kw: 0.0):
+                result = self.server._finish_run(
+                    data, None, product_url="https://ci.example", depth="standard", focus="all", people=False,
+                )
+            saved = json.loads(Path(result["analysis_path"]).read_text(encoding="utf-8"))
+        self.assertEqual([c.get("domain") for c in saved["companies"]], ["acme.com", "beta.io", None])
+
     def test_focus_individuals_requires_people(self):
         with self.assertRaises(ValueError):
             self.server._validate_depth_focus("standard", "individuals", people=False)
@@ -404,6 +517,38 @@ class McpServerTests(unittest.TestCase):
         with mock.patch.object(self.server, "_complete", fake_complete):
             self.server._run_classification("u", "", [{"source_url": "s", "evidence": "e"}], "quick", "all")
         self.assertIn(self.server.NO_PEOPLE_INSTRUCTION, captured["prompt"])
+
+
+class NameMatchingTests(unittest.TestCase):
+    def names_for(self, name: str) -> list[str]:
+        return collect_person_names({"individuals": [{"name": name}]})
+
+    def test_base_name_split_on_dashes_and_at(self):
+        for raw in ("Jane Doe \u2014 CTO, Acme", "Jane Doe \u2013 CTO", "Jane Doe - CTO", "Jane Doe at Acme"):
+            out, _ = redact_text("Thanks to Jane Doe for the thread.", self.names_for(raw))
+            self.assertNotIn("Jane Doe", out, raw)
+
+    def test_common_word_single_name_not_redacted(self):
+        out, n = redact_text("Acme will launch a program. Will we join?", self.names_for("Will"))
+        self.assertEqual(out, "Acme will launch a program. Will we join?")
+        self.assertEqual(n, 0)
+
+    def test_full_name_case_sensitive_whole_word(self):
+        names = self.names_for("Will Smith")
+        out, _ = redact_text("Will Smith posted; we will smith nothing.", names)
+        self.assertEqual(out, "[person removed] posted; we will smith nothing.")
+
+    def test_distinctive_handle_token_redacted(self):
+        out, _ = redact_text("search from:janedoe ci", self.names_for("janedoe"))
+        self.assertNotIn("janedoe", out)
+
+    def test_npm_scope_and_path_handles_survive(self):
+        text = "Uses @vercel/og and @types/node; ping @janedoe."
+        out, _ = redact_text(text, [])
+        self.assertIn("@vercel/og", out)
+        self.assertIn("@types/node", out)
+        self.assertNotIn("@janedoe", out)
+        self.assertTrue(out.endswith("."))
 
 
 class RedactPeopleUnit(unittest.TestCase):

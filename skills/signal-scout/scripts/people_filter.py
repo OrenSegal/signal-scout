@@ -43,7 +43,11 @@ PEOPLE_LIMITS_PREFIX = "No-people mode:"
 
 URL_RE = re.compile(r"https?://[^\s<>\"'()\[\]{}]+")
 EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+\b")
-HANDLE_RE = re.compile(r"(?<![\w@./])@[A-Za-z0-9_](?:[A-Za-z0-9_.-]{0,48}[A-Za-z0-9_])?")
+# The trailing lookahead keeps npm scopes and paths (@vercel/og, @types/node)
+# intact and stops a handle being cut short to dodge it.
+HANDLE_RE = re.compile(
+    r"(?<![\w@./])@[A-Za-z0-9_](?:[A-Za-z0-9_.-]{0,48}[A-Za-z0-9_])?(?![A-Za-z0-9_/]|[.-][A-Za-z0-9_])"
+)
 REDDIT_USER_RE = re.compile(r"(?<![\w/])/?u/[A-Za-z0-9_-]{2,30}\b")
 
 # Shared role inboxes are a published company channel, not a person.
@@ -58,12 +62,35 @@ ACCOUNT_HOSTS = {
     "twitter.com", "x.com", "instagram.com", "facebook.com", "tiktok.com",
     "threads.net", "threads.com",
 }
+# Separators between a name and a title or employer: "Jane Doe (CTO)",
+# "Jane Doe, CTO", "Jane Doe | Acme", "Jane Doe <em dash or en dash> CTO",
+# "Jane Doe - CTO", "Jane Doe at Acme".
+NAME_SPLIT_RE = re.compile(r"\s+(?:-|at)\s+|\s*[(\[|,\u2013\u2014]")
+
+# Single-token names that are also everyday words are never redacted on their
+# own: redacting "Will" would turn "Acme will launch" into nonsense.
+COMMON_WORDS = {
+    "will", "mark", "bill", "grace", "hope", "joy", "rose", "may", "june", "april", "august",
+    "faith", "frank", "pat", "sue", "dawn", "rob", "art", "ray", "guy", "jack", "max", "chase",
+    "hunter", "page", "lane", "drew", "rich", "sky", "summer", "autumn", "sunny", "earl", "dean",
+    "king", "angel", "sage", "river", "reed", "wade", "glen", "cliff", "gene", "don", "buck",
+    "bob", "sam", "jay", "victor", "miles", "penny", "rusty", "holly", "ivy", "iris", "amber",
+    "crystal", "ruby", "pearl", "violet", "lily", "daisy", "heath", "forrest", "stone", "hale",
+    "young", "brown", "white", "black", "green", "gray", "grey", "long", "short", "little",
+    "admin", "user", "team", "support", "dev", "devops", "founder", "builder", "maker", "hacker",
+    "anonymous", "deleted", "guest", "help", "test", "hello", "info", "sales", "product", "design",
+}
 ACCOUNT_HOST_NON_PROFILE = {"", "i", "home", "search", "hashtag", "explore", "intent", "share", "about", "tos", "privacy"}
 
 
 def _host(parsed) -> str:
     host = (parsed.hostname or "").lower()
     return host[4:] if host.startswith("www.") else host
+
+
+def _on(host: str, domain: str) -> bool:
+    """host is domain or a subdomain of it (mobile.twitter.com, m.facebook.com)."""
+    return host == domain or host.endswith("." + domain)
 
 
 def is_personal_url(url: str) -> bool:
@@ -79,29 +106,46 @@ def is_personal_url(url: str) -> bool:
     segments = [s for s in parsed.path.split("/") if s]
     first = segments[0].lower() if segments else ""
 
-    if host.endswith("linkedin.com"):
-        return first in {"in", "pub"}
-    if host in ACCOUNT_HOSTS:
+    if _on(host, "linkedin.com"):
+        # /in/ and /pub/ are profiles; /posts/<name>_<slug> is a post under a person's account.
+        return first in {"in", "pub", "posts"}
+    if any(_on(host, h) for h in ACCOUNT_HOSTS):
         return first not in ACCOUNT_HOST_NON_PROFILE
-    if host.endswith("reddit.com"):
+    if _on(host, "reddit.com"):
         return first in {"user", "u"}
     if host == "news.ycombinator.com":
         return parsed.path.rstrip("/") in {"/user", "/submitted", "/threads"} and "id" in parse_qs(parsed.query)
-    if host == "github.com":
+    if host in {"github.com", "gist.github.com"}:
         # A bare github.com/<name> is a user (or org) profile; repo and issue
         # URLs carry two or more segments and stay.
         return len(segments) == 1
-    if host == "bsky.app":
+    if _on(host, "bsky.app"):
         return first == "profile"
-    if host in {"youtube.com", "medium.com"} or first.startswith("@"):
+    if _on(host, "youtube.com") or _on(host, "medium.com") or first.startswith("@"):
         # medium.com/@x, youtube.com/@x, mastodon-style host/@x
         return first.startswith("@")
     return False
 
 
+def _is_redactable_name(name: str) -> bool:
+    """A full name (2+ tokens) always qualifies. A single token qualifies only
+    when it is distinctive: not an everyday word, and either 5+ characters or
+    containing a digit or underscore (handle-like)."""
+    tokens = name.split()
+    if len(tokens) >= 2:
+        return True
+    if len(tokens) != 1:
+        return False
+    token = tokens[0]
+    if token.lower().strip("@") in COMMON_WORDS:
+        return False
+    return len(token) >= 5 or any(c.isdigit() or c == "_" for c in token)
+
+
 def collect_person_names(data: dict[str, Any]) -> list[str]:
     """Every string that names an Individual: the `name` itself, the part before
-    a parenthetical (`Jane Doe (@jdoe)`), and any handle inside it."""
+    a title or employer (`Jane Doe (@jdoe)`, `Jane Doe, CTO`, `Jane Doe at Acme`),
+    and any handle inside it. Single everyday words are left out."""
     names: set[str] = set()
     for item in data.get("individuals") or []:
         if not isinstance(item, dict):
@@ -110,14 +154,14 @@ def collect_person_names(data: dict[str, Any]) -> list[str]:
         if not raw:
             continue
         names.add(raw)
-        base = re.split(r"\s*[(\[|,]", raw, maxsplit=1)[0].strip()
+        base = NAME_SPLIT_RE.split(raw, maxsplit=1)[0].strip()
         if base:
             names.add(base)
         for handle in HANDLE_RE.findall(raw) + REDDIT_USER_RE.findall(raw):
             names.add(handle.lstrip("/"))
             names.add(handle.lstrip("/@").removeprefix("u/"))
     # Longest first so "Jane Doe" is replaced before "Jane".
-    return sorted((n for n in names if len(n) >= 3), key=len, reverse=True)
+    return sorted((n for n in names if len(n) >= 3 and _is_redactable_name(n)), key=len, reverse=True)
 
 
 def drop_people(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -183,7 +227,8 @@ def _redact_plain(text: str, name_res: list[re.Pattern[str]]) -> tuple[str, int]
 def redact_text(text: str, names: list[str]) -> tuple[str, int]:
     """Redact one string. URLs are handled whole (a non-personal URL is never
     edited, so citations to threads, repos, and company pages stay intact)."""
-    name_res = [re.compile(r"(?<![\w@])" + re.escape(n) + r"(?!\w)", re.IGNORECASE) for n in names]
+    # Case-sensitive whole words: "Will Smith" is a name, "will smith" is not.
+    name_res = [re.compile(r"(?<![\w@])" + re.escape(n) + r"(?!\w)") for n in names]
     pieces: list[str] = []
     count = 0
     last = 0

@@ -39,7 +39,9 @@ then redacts person names, @handles, u/handles, personal emails, and profile
 URLs from every other field, from `handoff-<date>.json`, and from the
 verification text it returns. A segment, company, or battlecard entry whose
 only source is a personal profile or a post under a personal account is
-dropped. `focus="individuals"` is refused unless `people=True`. Pass
+dropped. `focus="individuals"` is refused unless `people=True`.
+
+Each call is metered before verification runs. Verification has a timeout sized to depth (180s, 360s, 720s); if it runs out, the tool still returns a report but sets `verification_timed_out: true` and says the report is unverified. Pass
 `people=True` only for a private, client-gated run, never for a server that
 other people's agents can reach. Details and limits: [COMPLIANCE.md](../COMPLIANCE.md).
 

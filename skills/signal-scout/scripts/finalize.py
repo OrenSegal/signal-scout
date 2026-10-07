@@ -66,6 +66,15 @@ PROSPECT_KINDS = {"individuals": "individual", "segments": "segment", "companies
 # Bare registrable domain, the key Clay and CRMs match company records on.
 DOMAIN_RE = re.compile(r"^(?=.{4,253}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$")
 
+def normalize_domain(value: object) -> str | None:
+    """Reduce 'https://www.Acme.com/partners' to 'acme.com'; None when the value
+    is not a domain. For model output that finalize.validate never sees (MCP path)."""
+    text = str(value or "").strip().lower()
+    text = re.sub(r"^[a-z][a-z0-9+.-]*://", "", text).split("/", 1)[0].split("?", 1)[0].split(":", 1)[0]
+    text = text.removeprefix("www.")
+    return text if DOMAIN_RE.match(text) else None
+
+
 # Same columns as the HTML report's Export CSV button (report-artifact.md).
 CSV_COLUMNS = (
     "type", "name", "domain", "stage", "score", "verification", "pain_signal", "why_fit",

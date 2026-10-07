@@ -29,8 +29,8 @@ The hard filter that enforces rules 1 and 2 is `finalize.py --no-people` (or `"p
 What the filter does:
 
 - Drops the `individuals` array before source verification, so no person is fetched or verified.
-- Drops any Segment, Company, or battlecard entry whose own source is a personal profile or a post under a personal account (LinkedIn `/in/`, X/Twitter, Instagram, Facebook, TikTok, Threads, Reddit `/user/`, Hacker News user pages, bare GitHub profiles, Bluesky profiles, `/@name` pages).
-- After verification, redacts from every remaining string: the names and handles of the dropped Individuals, any `@handle` or `u/handle`, personal email addresses (shared role inboxes such as `partners@` stay), and personal profile URLs. Source lists lose any entry that is only a profile URL.
+- Drops any Segment, Company, or battlecard entry whose own source is a personal profile or a post under a personal account (LinkedIn `/in/` and `/posts/`, X/Twitter, Instagram, Facebook, TikTok, Threads, Reddit `/user/`, Hacker News user pages, bare GitHub profiles, Bluesky profiles, `/@name` pages, including mobile and other subdomains such as `mobile.twitter.com` and `m.facebook.com`).
+- After verification, redacts from every remaining string: the names and handles of the dropped Individuals (full names match case-sensitively as whole words; a single-word name is skipped when it is an everyday word such as "Will", to avoid mangling sentences), any `@handle` (npm scopes such as `@vercel/og` are left alone) or `u/handle`, personal email addresses (shared role inboxes such as `partners@` stay), and personal profile URLs. Source lists lose any entry that is only a profile URL.
 - Adds a line to `limits` saying how many Individuals, prospects, and references were removed.
 - Writes the filtered JSON, `handoff.json`, the HTML report, and `prospects.csv` to a `public/` folder. The input file is left untouched and is private working data: never publish it. Verify sources against that private draft, not the public copy: redacted quotes no longer match the page word for word.
 

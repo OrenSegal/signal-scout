@@ -6,6 +6,7 @@
 - MCP server: both tools take `people` (default `False`), so the server names no one unless asked. `focus="individuals"` requires `people=True`.
 - Fixed: the MCP server called `verify_sources.py --apply`, a flag that does not exist, so verification never ran. It now passes `--annotate-out` and `--handoff-out` as its README already said.
 - Added an optional Company `domain` field, validated as a bare domain and exported as a `domain` CSV column (finalize CSV and the HTML Export CSV), for Clay and CRM matching.
+- MCP server: the call is metered before verification, verification gets a depth-sized timeout, and a timeout returns an unverified report flagged `verification_timed_out` instead of an uncaught error. Company `domain` is normalized in the MCP path.
 - Fixed version drift: the plugin manifests said 1.6.1 while `package.json` said 1.6.2.
 
 - Correction to 1.6.2: the litmus suite in `evals/` does not catch regressions in the skill's behavior. Its "runs" are hand-written example outputs, and CI grades those same files against a baseline on every push, so a change to the skill cannot change the result. It now runs under a name that says so, and `evals/README.md` explains how to record real runs with `litmus capture`.

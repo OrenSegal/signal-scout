@@ -51,6 +51,7 @@ from usage_meter import calls_today, record_call  # noqa: E402
 
 SKILL_SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "signal-scout" / "scripts"
 sys.path.insert(0, str(SKILL_SCRIPTS))
+from finalize import normalize_domain  # noqa: E402
 from people_filter import (  # noqa: E402
     add_limits_note,
     drop_people,
@@ -68,6 +69,9 @@ MAX_PAUSE_TURNS = 3  # server-tool loops resume automatically; cap resends so a 
 DAILY_CALL_CAP = int(os.environ.get("SIGNAL_SCOUT_DAILY_CALL_CAP", "20"))
 
 DEPTH_LIMITS = {"quick": 5, "standard": 10, "deep": 20}
+# Whole-run budget for verify_sources.py, in seconds. Each source can take a
+# live fetch plus Wayback and archive.ph retries, so it scales with depth.
+VERIFY_TIMEOUTS = {"quick": 180, "standard": 360, "deep": 720}
 FOCUS_VALUES = {"all", "individuals", "segments", "companies", "competitor-chasers", "design-partners"}
 
 CLASSIFICATION_RULES = """Classify every candidate as exactly one of:
@@ -238,6 +242,15 @@ def _finish_run(
     written or verified, and person references are redacted from the verified
     JSON and handoff before the report is built, so no file this server writes
     and nothing it returns names a person."""
+    # Meter first: the paid model call already happened, so every later failure
+    # (no prospects left, verification timeout, report error) still counts
+    # toward DAILY_CALL_CAP.
+    cost = record_call(product_url=product_url, depth=depth, focus=focus, usage=usage, model=MODEL)
+
+    for company in analysis.get("companies") or []:
+        if isinstance(company, dict) and "domain" in company:
+            company["domain"] = normalize_domain(company.get("domain"))
+
     people_stats: dict[str, Any] = {}
     if not people:
         analysis, people_stats = drop_people(analysis)
@@ -255,16 +268,24 @@ def _finish_run(
     analysis_path.write_text(json.dumps(analysis, indent=2), encoding="utf-8")
     handoff_path = run_dir / f"handoff-{stamp}.json"
 
-    verify = subprocess.run(
-        [
-            sys.executable, str(SKILL_SCRIPTS / "verify_sources.py"), str(analysis_path),
-            "--annotate-out", str(analysis_path), "--handoff-out", str(handoff_path),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    verification_output = verify.stdout.strip()
+    verification_timed_out = False
+    try:
+        verify = subprocess.run(
+            [
+                sys.executable, str(SKILL_SCRIPTS / "verify_sources.py"), str(analysis_path),
+                "--annotate-out", str(analysis_path), "--handoff-out", str(handoff_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=VERIFY_TIMEOUTS[depth],
+        )
+        verification_output = verify.stdout.strip()
+    except subprocess.TimeoutExpired:
+        verification_timed_out = True
+        verification_output = (
+            f"Source verification timed out after {VERIFY_TIMEOUTS[depth]}s. The report is UNVERIFIED: "
+            "no claim was checked against its source and no handoff file was written. Do not ship it as verified."
+        )
 
     if not people:
         verified, count = redact_people(json.loads(analysis_path.read_text(encoding="utf-8")), people_stats["names"])
@@ -288,7 +309,6 @@ def _finish_run(
         raise RuntimeError(f"Report generation failed: {generate.stderr.strip()}")
 
     reloaded = json.loads(analysis_path.read_text(encoding="utf-8"))  # verify --annotate-out edited it in place
-    cost = record_call(product_url=product_url, depth=depth, focus=focus, usage=usage, model=MODEL)
 
     return {
         "verdict": reloaded.get("verdict"),
@@ -300,6 +320,7 @@ def _finish_run(
         "handoff_path": str(handoff_path) if handoff_path.exists() else None,
         "people": people,
         "source_verification": verification_output,
+        "verification_timed_out": verification_timed_out,
         "estimated_cost_usd": cost,
     }
 
