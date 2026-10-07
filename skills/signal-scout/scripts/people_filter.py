@@ -148,17 +148,29 @@ def url_names_person(url: str, names: list[str]) -> bool:
     Multi-token names match with any separator (jane-doe, jane_doe, jane%20doe)."""
     text = unquote(url).lower()
     for name in names:
-        tokens = [t for t in re.split(r"[^a-z0-9]+", name.lower()) if t]
+        # Unicode-aware tokens and boundaries, so "José Álvarez" matches /t/josé-álvarez.
+        tokens = re.findall(r"[^\W_]+", name.lower())
         if not tokens:
             continue
-        joined = r"[^a-z0-9]?".join(re.escape(t) for t in tokens)
-        if re.search(r"(?<![a-z0-9])" + joined + r"(?![a-z0-9])", text):
+        joined = r"[\W_]?".join(re.escape(t) for t in tokens)
+        if re.search(r"(?<![^\W_])" + joined + r"(?![^\W_])", text):
             return True
     return False
 
 
+def url_has_personal_contact(url: str) -> bool:
+    """True when the decoded URL carries a personal email or an @handle in its
+    path or query (?contact=alice@example.com, ?via=@someone). Role inboxes and
+    path-style npm scopes (/package/@vercel/og) are not personal."""
+    text = unquote(url)
+    for match in EMAIL_RE.finditer(text):
+        if match.group(0).split("@", 1)[0].lower() not in ROLE_INBOXES:
+            return True
+    return HANDLE_RE.search(EMAIL_RE.sub(" ", text)) is not None
+
+
 def _names_url(url: str, names: list[str]) -> bool:
-    return is_personal_url(url) or url_names_person(url, names)
+    return is_personal_url(url) or url_names_person(url, names) or url_has_personal_contact(url)
 
 
 def collect_person_names(data: dict[str, Any]) -> list[str]:

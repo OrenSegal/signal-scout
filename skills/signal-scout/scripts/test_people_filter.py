@@ -582,6 +582,27 @@ class UrlIdentifierTests(unittest.TestCase):
             self.assertNotIn(url, out, url)
             self.assertGreater(n, 0)
 
+    def test_unicode_name_in_url_is_removed(self):
+        names = collect_person_names({"individuals": [{"name": "Jos\u00e9 \u00c1lvarez"}]})
+        for url in ("https://forum.example.com/t/jos\u00e9-\u00e1lvarez/3",
+                    "https://forum.example.com/t/jos%C3%A9-%C3%A1lvarez/3"):
+            out, _ = redact_text(f"See {url} now.", names)
+            self.assertNotIn(url, out, url)
+
+    def test_unrecorded_email_or_handle_in_url_is_removed(self):
+        for url in ("https://acme.com/?contact=alice@example.com",
+                    "https://acme.com/?contact=alice%40example.com",
+                    "https://acme.com/share?via=@someperson"):
+            out, _ = redact_text(f"See {url} now.", [])
+            self.assertNotIn(url, out, url)
+            self.assertNotIn("alice", out)
+            self.assertNotIn("someperson", out)
+
+    def test_role_inbox_and_npm_scope_urls_kept(self):
+        for url in ("https://acme.com/?contact=partners@acme.com", "https://www.npmjs.com/package/@vercel/og"):
+            out, _ = redact_text(f"See {url} now.", [])
+            self.assertIn(url, out, url)
+
     def test_unrelated_url_kept(self):
         out, _ = redact_text(f"See {THREAD_URL}.", self.NAMES)
         self.assertIn(THREAD_URL, out)
