@@ -18,6 +18,12 @@ capable calling agent (Claude Code included) already has for free:
   second research agent to duplicate tools the caller already has isn't a
   real value-add, it's just marked-up compute.
 
+Both tools default to `people=False`: the hard no-people filter from
+skills/signal-scout/scripts/people_filter.py drops every Individual and
+redacts person names, handles, emails, and profile URLs from the rest, so a
+public or directory-listed server never returns a named person. Pass
+`people=True` only for a private, client-gated run.
+
 Requires ANTHROPIC_API_KEY (or an `ant auth login` profile — the SDK picks
 either up automatically). No payment provider is wired in: every call is
 metered to usage.jsonl via usage_meter.py so real per-call cost is visible.
@@ -44,6 +50,15 @@ from schema import ANALYSIS_SCHEMA  # noqa: E402
 from usage_meter import calls_today, record_call  # noqa: E402
 
 SKILL_SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "signal-scout" / "scripts"
+sys.path.insert(0, str(SKILL_SCRIPTS))
+from finalize import normalize_domain  # noqa: E402
+from people_filter import (  # noqa: E402
+    add_limits_note,
+    drop_people,
+    has_prospects,
+    redact_people,
+    redact_text,
+)
 OUTPUT_DIR = Path(os.environ.get("SIGNAL_SCOUT_OUTPUT_DIR", str(Path.home() / ".signal-scout" / "reports")))
 MODEL = os.environ.get("SIGNAL_SCOUT_MODEL", "claude-sonnet-5")
 MAX_PAUSE_TURNS = 3  # server-tool loops resume automatically; cap resends so a stuck run can't loop forever
@@ -54,6 +69,9 @@ MAX_PAUSE_TURNS = 3  # server-tool loops resume automatically; cap resends so a 
 DAILY_CALL_CAP = int(os.environ.get("SIGNAL_SCOUT_DAILY_CALL_CAP", "20"))
 
 DEPTH_LIMITS = {"quick": 5, "standard": 10, "deep": 20}
+# Whole-run budget for verify_sources.py, in seconds. Each source can take a
+# live fetch plus Wayback and archive.ph retries, so it scales with depth.
+VERIFY_TIMEOUTS = {"quick": 180, "standard": 360, "deep": 720}
 FOCUS_VALUES = {"all", "individuals", "segments", "companies", "competitor-chasers", "design-partners"}
 
 CLASSIFICATION_RULES = """Classify every candidate as exactly one of:
@@ -68,6 +86,12 @@ consented, or will buy — these are hypotheses based on public signals.
 
 A "contact path" for a Company must be a public, self-serve channel — never a scraped personal \
 email. Output must conform exactly to the JSON schema you were given — no prose outside the JSON."""
+
+NO_PEOPLE_INSTRUCTION = (
+    "People: excluded. Return an empty individuals array and do not name, quote by name, or link to "
+    "the profile of any person in any field; report Segments and Companies only. Output is filtered "
+    "afterwards regardless."
+)
 
 # Used by find_first_customers, which does its own web research. Most callers that
 # already have their own web_search/web_fetch (Claude Code included) should reach for
@@ -172,7 +196,7 @@ def _complete(system: str, user_prompt: str, *, tools: list[dict[str, Any]] | No
     return analysis, _UsageTotal(usage_totals)
 
 
-def _run_research(product_url: str, depth: str, focus: str) -> tuple[dict[str, Any], _UsageTotal]:
+def _run_research(product_url: str, depth: str, focus: str, people: bool = False) -> tuple[dict[str, Any], _UsageTotal]:
     max_prospects = DEPTH_LIMITS[depth]
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     user_prompt = (
@@ -180,11 +204,14 @@ def _run_research(product_url: str, depth: str, focus: str) -> tuple[dict[str, A
         f"Depth: {depth} (up to {max_prospects} total prospects across all types). "
         f"Focus: {focus}. Today's date: {today}."
     )
+    if not people:
+        user_prompt += f"\n{NO_PEOPLE_INSTRUCTION}"
     return _complete(RESEARCH_SYSTEM_PROMPT, user_prompt, tools=_tools())
 
 
 def _run_classification(
-    product_url: str, target_customer: str, findings: list[dict[str, Any]], depth: str, focus: str
+    product_url: str, target_customer: str, findings: list[dict[str, Any]], depth: str, focus: str,
+    people: bool = False,
 ) -> tuple[dict[str, Any], _UsageTotal]:
     max_prospects = DEPTH_LIMITS[depth]
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -196,6 +223,8 @@ def _run_classification(
         f"Findings already researched (classify, score, and structure only these):\n"
         f"{json.dumps(findings, indent=2)}"
     )
+    if not people:
+        user_prompt += f"\n\n{NO_PEOPLE_INSTRUCTION}"
     return _complete(CLASSIFY_SYSTEM_PROMPT, user_prompt, tools=None)
 
 
@@ -204,21 +233,80 @@ def _slugify(value: str) -> str:
     return slug or "product"
 
 
-def _finish_run(analysis: dict[str, Any], usage: _UsageTotal, *, product_url: str, depth: str, focus: str) -> dict[str, Any]:
-    """Shared post-processing for both tools: write, verify, generate the report, meter."""
+def _finish_run(
+    analysis: dict[str, Any], usage: _UsageTotal, *, product_url: str, depth: str, focus: str, people: bool = False
+) -> dict[str, Any]:
+    """Shared post-processing for both tools: write, verify, generate the report, meter.
+
+    With people=False (the default) Individuals are dropped before anything is
+    written or verified, and person references are redacted from the verified
+    JSON and handoff before the report is built, so no file this server writes
+    and nothing it returns names a person."""
+    # Meter first: the paid model call already happened, so every later failure
+    # (no prospects left, verification timeout, report error) still counts
+    # toward DAILY_CALL_CAP.
+    cost = record_call(product_url=product_url, depth=depth, focus=focus, usage=usage, model=MODEL)
+
+    for company in analysis.get("companies") or []:
+        if isinstance(company, dict) and "domain" in company:
+            company["domain"] = normalize_domain(company.get("domain"))
+
+    people_stats: dict[str, Any] = {}
+    if not people:
+        analysis, people_stats = drop_people(analysis)
+        if not has_prospects(analysis):
+            raise RuntimeError(
+                "No-people mode left no Segments or Companies to report. Pass people=True only "
+                "for a private, client-gated run."
+            )
+
     slug = _slugify(analysis.get("title") or product_url)
     run_dir = OUTPUT_DIR / slug
     run_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     analysis_path = run_dir / f"analysis-{stamp}.json"
     analysis_path.write_text(json.dumps(analysis, indent=2), encoding="utf-8")
+    handoff_path = run_dir / f"handoff-{stamp}.json"
 
-    verify = subprocess.run(
-        [sys.executable, str(SKILL_SCRIPTS / "verify_sources.py"), str(analysis_path), "--apply"],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
+    def _redact_written_files() -> None:
+        nonlocal verification_output
+        verified, count = redact_people(json.loads(analysis_path.read_text(encoding="utf-8")), people_stats["names"])
+        people_stats["redactions"] = count
+        add_limits_note(verified, people_stats)
+        analysis_path.write_text(json.dumps(verified, indent=2), encoding="utf-8")
+        if handoff_path.exists():
+            handoff, _ = redact_people(json.loads(handoff_path.read_text(encoding="utf-8")), people_stats["names"])
+            add_limits_note(handoff, people_stats)
+            handoff_path.write_text(json.dumps(handoff, indent=2), encoding="utf-8")
+        verification_output, _ = redact_text(verification_output, people_stats["names"])
+
+    verification_timed_out = False
+    verification_output = ""
+    try:
+        verify = subprocess.run(
+            [
+                sys.executable, str(SKILL_SCRIPTS / "verify_sources.py"), str(analysis_path),
+                "--annotate-out", str(analysis_path), "--handoff-out", str(handoff_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=VERIFY_TIMEOUTS[depth],
+        )
+        verification_output = verify.stdout.strip()
+    except subprocess.TimeoutExpired:
+        verification_timed_out = True
+        verification_output = (
+            f"Source verification timed out after {VERIFY_TIMEOUTS[depth]}s. The report is UNVERIFIED: "
+            "no claim was checked against its source and no handoff file was written. Do not ship it as verified."
+        )
+    except BaseException:
+        # Any other failure: never leave the unredacted pre-verification file behind.
+        if not people:
+            _redact_written_files()
+        raise
+
+    if not people:
+        _redact_written_files()
 
     report_path = run_dir / f"report-{stamp}.html"
     generate = subprocess.run(
@@ -230,8 +318,7 @@ def _finish_run(analysis: dict[str, Any], usage: _UsageTotal, *, product_url: st
     if generate.returncode != 0:
         raise RuntimeError(f"Report generation failed: {generate.stderr.strip()}")
 
-    reloaded = json.loads(analysis_path.read_text(encoding="utf-8"))  # verify --apply may have edited it in place
-    cost = record_call(product_url=product_url, depth=depth, focus=focus, usage=usage, model=MODEL)
+    reloaded = json.loads(analysis_path.read_text(encoding="utf-8"))  # verify --annotate-out edited it in place
 
     return {
         "verdict": reloaded.get("verdict"),
@@ -240,7 +327,10 @@ def _finish_run(analysis: dict[str, Any], usage: _UsageTotal, *, product_url: st
         "companies": len(reloaded.get("companies") or []),
         "analysis_path": str(analysis_path),
         "report_path": str(report_path),
-        "source_verification": verify.stdout.strip(),
+        "handoff_path": str(handoff_path) if handoff_path.exists() else None,
+        "people": people,
+        "source_verification": verification_output,
+        "verification_timed_out": verification_timed_out,
         "estimated_cost_usd": cost,
     }
 
@@ -251,16 +341,19 @@ mcp = FastMCP(
         "Turns research findings into an evidence-backed, verified shortlist of first customers, "
         "market segments, and companies worth pitching. Prefer classify_and_score if you already "
         "gathered findings with your own web_search/web_fetch — it's cheaper and doesn't duplicate "
-        "work you can already do. Use find_first_customers only if you have no web tools of your own."
+        "work you can already do. Use find_first_customers only if you have no web tools of your own. "
+        "Both tools exclude named people by default (people=False)."
     ),
 )
 
 
-def _validate_depth_focus(depth: str, focus: str) -> None:
+def _validate_depth_focus(depth: str, focus: str, people: bool = False) -> None:
     if depth not in DEPTH_LIMITS:
         raise ValueError(f"depth must be one of {sorted(DEPTH_LIMITS)}, got {depth!r}")
     if focus not in FOCUS_VALUES:
         raise ValueError(f"focus must be one of {sorted(FOCUS_VALUES)}, got {focus!r}")
+    if focus == "individuals" and not people:
+        raise ValueError('focus="individuals" needs people=True; this server excludes named people by default.')
     # Checked before the (paid) model call, not after — a cap that only fires once the
     # expensive call already happened wouldn't protect the budget it exists to protect.
     if calls_today() >= DAILY_CALL_CAP:
@@ -278,6 +371,7 @@ def classify_and_score(
     target_customer: str = "",
     depth: str = "standard",
     focus: str = "all",
+    people: bool = False,
 ) -> dict[str, Any]:
     """Classify and score findings YOU already researched — the default choice for a caller
     that has its own web_search/web_fetch (Claude Code included). Does not re-research
@@ -295,21 +389,26 @@ def classify_and_score(
         depth: "quick" (<=5 prospects), "standard" (<=10, default), or "deep" (<=20) —
             caps how many of `findings` get promoted to the primary shortlist.
         focus: "all" (default), "individuals", "segments", "companies",
-            "competitor-chasers", or "design-partners".
+            "competitor-chasers", or "design-partners". "individuals" requires people=True.
+        people: False (default) applies the hard no-people filter: no Individuals, and person
+            names, handles, emails, and profile URLs are redacted everywhere else. True keeps
+            Individuals; use it only for a private, client-gated report, never a public one.
 
     Returns a summary plus paths to the full JSON analysis and the standalone HTML report
     (verified via verify_sources.py --apply before the report is generated).
     """
-    _validate_depth_focus(depth, focus)
+    _validate_depth_focus(depth, focus, people)
     if not findings:
         raise ValueError("findings must be a non-empty list — nothing to classify.")
 
-    analysis, usage = _run_classification(product_url, target_customer, findings, depth, focus)
-    return _finish_run(analysis, usage, product_url=product_url, depth=depth, focus=focus)
+    analysis, usage = _run_classification(product_url, target_customer, findings, depth, focus, people)
+    return _finish_run(analysis, usage, product_url=product_url, depth=depth, focus=focus, people=people)
 
 
 @mcp.tool()
-def find_first_customers(product_url: str, depth: str = "standard", focus: str = "all") -> dict[str, Any]:
+def find_first_customers(
+    product_url: str, depth: str = "standard", focus: str = "all", people: bool = False
+) -> dict[str, Any]:
     """Research a startup URL end-to-end and return an evidence-backed shortlist of first
     customers, market segments, and companies worth pitching, using public signals only.
 
@@ -322,14 +421,17 @@ def find_first_customers(product_url: str, depth: str = "standard", focus: str =
         product_url: The startup's URL, repo, or a one-line product description.
         depth: "quick" (<=5 prospects), "standard" (<=10, default), or "deep" (<=20).
         focus: "all" (default), "individuals", "segments", "companies",
-            "competitor-chasers", or "design-partners".
+            "competitor-chasers", or "design-partners". "individuals" requires people=True.
+        people: False (default) applies the hard no-people filter: no Individuals, and person
+            names, handles, emails, and profile URLs are redacted everywhere else. True keeps
+            Individuals; use it only for a private, client-gated report, never a public one.
 
     Returns a summary plus paths to the full JSON analysis and the standalone HTML report
     (verified via verify_sources.py --apply before the report is generated).
     """
-    _validate_depth_focus(depth, focus)
-    analysis, usage = _run_research(product_url, depth, focus)
-    return _finish_run(analysis, usage, product_url=product_url, depth=depth, focus=focus)
+    _validate_depth_focus(depth, focus, people)
+    analysis, usage = _run_research(product_url, depth, focus, people)
+    return _finish_run(analysis, usage, product_url=product_url, depth=depth, focus=focus, people=people)
 
 
 if __name__ == "__main__":

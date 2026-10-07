@@ -19,6 +19,7 @@ from typing import Any
 from urllib.parse import quote, urlparse
 
 import diff_reports
+from people_filter import strip_people
 from signal_scout_core import (
     TIER_BROKEN,
     TIER_DISQUALIFYING,
@@ -101,7 +102,7 @@ def slugify(value: Any) -> str:
 NEXT_ACTION_FIELD = {"individual": "opener", "segment": "content_angle", "company": "bd_angle"}
 
 CSV_COLUMNS = [
-    "type", "name", "stage", "score", "verification", "pain_signal", "why_fit", "why_now",
+    "type", "name", "domain", "stage", "score", "verification", "pain_signal", "why_fit", "why_now",
     "source_title", "source_url", "source_type", "signal_date", "next_action", "caution",
 ]
 
@@ -123,6 +124,7 @@ def build_csv(individuals: list[dict[str, Any]], segments: list[dict[str, Any]],
             row = [
                 kind,
                 item.get("name", ""),
+                item.get("domain") or "",
                 item.get("stage", ""),
                 clamp(item.get("score")),
                 TIER_LABELS.get(item.get("verification_tier"), "Unverified"),
@@ -1498,6 +1500,9 @@ def main() -> None:
         data = json.load(handle)
     if not isinstance(data, dict):
         raise SystemExit("Input JSON must contain an object at the top level.")
+    if data.get("people") is False:
+        # Belt and braces for direct runs: a file marked no-people never renders a person.
+        data, _ = strip_people(data)
 
     if not any(dicts(data.get(k)) for k in ("individuals", "segments", "companies")):
         raise SystemExit("At least one of individuals, segments, or companies must be a non-empty array.")

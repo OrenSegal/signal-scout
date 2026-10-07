@@ -108,6 +108,23 @@ class ClientSectionValidationTests(unittest.TestCase):
         errors = validate(data)
         self.assertTrue(any("tier must be 1, 2, or 3" in e for e in errors))
 
+    def test_company_domain_must_be_bare(self):
+        data = valid_report()
+        data["companies"] = [self._company(domain="https://acme.com/partners")]
+        self.assertTrue(any("domain must be a bare" in e for e in validate(data)))
+        data["companies"] = [self._company(domain="acme.com")]
+        self.assertEqual(validate(data), [])
+
+    def test_company_domain_in_csv(self):
+        data = valid_report()
+        data["companies"] = [self._company(domain="acme.com")]
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "prospects.csv"
+            write_csv(data, out)
+            with out.open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+        self.assertEqual([r["domain"] for r in rows], ["", "acme.com"])
+
     def test_valid_tiered_company_passes(self):
         data = valid_report()
         data["companies"] = [self._company(tier=2, tier_rationale="warm BD only")]

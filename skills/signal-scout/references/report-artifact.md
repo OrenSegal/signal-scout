@@ -37,9 +37,12 @@ This file is the schema authority — SKILL.md holds only a compact summary. Dra
   "patterns": ["see Pattern schema"],
   "outreach_plan": "see Outreach plan schema",
   "competitive_context": "see Competitive context schema (optional)",
-  "limits": ["string — missing evidence, assumptions, and classification calls"]
+  "limits": ["string — missing evidence, assumptions, and classification calls"],
+  "people": "boolean (optional): false turns on no-people mode for finalize.py and generate_report.py, same as --no-people"
 }
 ```
+
+With `"people": false` (or `finalize.py --no-people`), the published output carries no Individuals and no person names, handles, personal emails, or profile URLs in any field. finalize.py writes it to a `public/` folder next to the input and leaves the input untouched. See COMPLIANCE.md for exactly what the filter catches and what it does not.
 
 At least one of `individuals`, `segments`, `companies` must be non-empty. Omit an array entirely rather than including it empty.
 
@@ -126,6 +129,7 @@ If `suggested_channel` is "No public reply/DM channel exists," omit `opener` and
   "bd_angle": "string — suggested opening pitch, under 90 words",
   "what_to_propose": "string — the concrete first ask",
   "caution": "string",
+  "domain": "string (optional): bare company domain such as 'acme.com', no scheme or path. Exported as the CSV `domain` column, which Clay and CRMs match company records on",
   "dimensions": {
     "strategic_fit": "number 0-5",
     "timing": "number 0-5",
@@ -342,7 +346,7 @@ The HTML report renders these sections in order:
 
 Sections 4-6 are omitted entirely when their array is empty or absent — the report never shows an empty "Companies" section with a placeholder card. Section 8 is omitted entirely when `growth_playbook` is absent or all of its sub-fields are empty.
 
-The toolbar also includes an **Export CSV** button — flattens every prospect (individuals, segments, companies) into one CSV with columns `type, name, stage, score, verification, pain_signal, why_fit, why_now, source_title, source_url, source_type, signal_date, next_action, caution` for pasting into a spreadsheet or CRM. `verification` is blank unless `verify_sources.py --annotate-out` was run first.
+The toolbar also includes an **Export CSV** button — flattens every prospect (individuals, segments, companies) into one CSV with columns `type, name, domain, stage, score, verification, pain_signal, why_fit, why_now, source_title, source_url, source_type, signal_date, next_action, caution` for pasting into a spreadsheet or CRM. `verification` is blank unless `verify_sources.py --annotate-out` was run first.
 
 ## Error handling
 

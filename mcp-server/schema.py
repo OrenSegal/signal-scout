@@ -109,8 +109,10 @@ COMPANY_SCHEMA = _obj(
         "bd_angle": {"type": "string"},
         "what_to_propose": {"type": "string"},
         "caution": {"type": "string"},
+        "domain": {"type": "string", "description": "Bare company domain like 'acme.com' (no scheme or path), the key Clay and CRMs match on"},
         "dimensions": _dims("strategic_fit", "timing", "execution_ease", "evidence_quality"),
     },
+    nullable=("domain",),
 )
 
 PATTERN_SCHEMA = _obj(
