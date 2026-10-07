@@ -32,7 +32,7 @@ What the filter does:
 - Drops any Segment, Company, or battlecard entry whose own source is a personal profile or a post under a personal account (LinkedIn `/in/`, X/Twitter, Instagram, Facebook, TikTok, Threads, Reddit `/user/`, Hacker News user pages, bare GitHub profiles, Bluesky profiles, `/@name` pages).
 - After verification, redacts from every remaining string: the names and handles of the dropped Individuals, any `@handle` or `u/handle`, personal email addresses (shared role inboxes such as `partners@` stay), and personal profile URLs. Source lists lose any entry that is only a profile URL.
 - Adds a line to `limits` saying how many Individuals, prospects, and references were removed.
-- Writes the filtered JSON, `handoff.json`, the HTML report, and `prospects.csv` to a `public/` folder. The input file is left untouched and is private working data: never publish it.
+- Writes the filtered JSON, `handoff.json`, the HTML report, and `prospects.csv` to a `public/` folder. The input file is left untouched and is private working data: never publish it. Verify sources against that private draft, not the public copy: redacted quotes no longer match the page word for word.
 
 What it does not do: it is pattern matching plus removal of names the analysis recorded as Individuals, not named-entity recognition. A person mentioned only by a bare name inside a quote, who was never recorded as an Individual, is not detected. In no-people mode the skill is told not to write such names, but check a public report by eye before publishing it.
 

@@ -223,7 +223,7 @@ Two independent axes — combine them freely.
 
 `--focus` only prioritizes; `--focus companies` can still return Individuals. For output that must name no one, use the hard filter:
 
-**`--no-people`** (or `"people": false` in `analysis.json`): required for anything public, such as a directory listing, a registry demo, or a proof page. Do not research or write Individuals, and do not name people in any other field. Then run `finalize.py --no-people`: it drops Individuals, redacts person names, handles, emails, and profile URLs everywhere else, and writes every output to `public/` next to the input. Publish only that folder. The MCP server applies this filter by default. A private, client-gated report keeps Individuals only until a privacy lawyer reviews it (see COMPLIANCE.md).
+**`--no-people`** (or `"people": false` in `analysis.json`): required for anything public, such as a directory listing, a registry demo, or a proof page. Do not research or write Individuals, and do not name people in any other field. Then run `finalize.py analysis.json --no-people` without `--out`: it drops Individuals, redacts person names, handles, emails, and profile URLs everywhere else, and writes every output to `public/` next to the input. Publish only that folder. The MCP server applies this filter by default. A private, client-gated report keeps Individuals only until a privacy lawyer reviews it (see COMPLIANCE.md).
 
 Use `standard` + `all` by default.
 
