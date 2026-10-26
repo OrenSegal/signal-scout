@@ -183,7 +183,7 @@ For a scheduled recurring run, offer to set this up via the `schedule` skill (e.
 
 ### 8. Close the loop with outcomes (when available)
 
-signal-scout's scores are self-graded — there is no ground truth until someone acts on a prospect. If the user later reports what happened after outreach (via [signal-outreach](https://github.com/OrenSegal/first-to-first-sale) or directly), log it:
+signal-scout's scores are self-graded — there is no ground truth until someone acts on a prospect. If the user later reports what happened after outreach (via [signal-outreach](https://github.com/OrenSegal/signal-skills/tree/main/plugins/signal-outreach) or directly), log it:
 
 ```bash
 python3 <skill_dir>/scripts/log_outcome.py outputs/<slug>/outcomes.jsonl \
