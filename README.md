@@ -39,6 +39,10 @@ The practical effect: a prospect whose evidence doesn't hold up is dropped, open
 
 How this differs from grounding checkers: the ones I looked at (Vectara HHEM, Google `checkGrounding`, Ragas, Patronus Lynx, Galileo Luna, Guardrails) score a claim against text you supply and leave fetching the URL to you. In GTM tooling, "verified" usually means verified contact data (is this email deliverable), not a verified claim.
 
+## Evals
+
+CI runs [`evals/pipeline/run.py`](evals/pipeline/run.py) on every push. It calls the real validation, scoring and source-verification code on four fixture reports, with saved pages in place of the network, and fails on any change in output. In [#3](https://github.com/OrenSegal/signal-scout/pull/3), three planted bugs (a flipped grounding threshold, a changed score weight, a fabricated prospect left in the handoff) each turned it red. The LLM steps (finding, classifying and rating prospects, writing openers) are not covered; [`evals/README.md`](evals/README.md) explains both checks and what each one misses.
+
 ## Optional features
 
 These go beyond a single report and are opt-in per product. [`skills/signal-scout/references/roadmap.md`](skills/signal-scout/references/roadmap.md) describes when the agent should offer each one.
@@ -56,7 +60,7 @@ signal-scout runs on your own Claude Code or OpenCode session plus public web se
 
 It does not do sending infrastructure at scale, CRM sync, or contact-data enrichment (finding emails or phone numbers). Its job ends at a verified, scored shortlist and a next action.
 
-For the next step, use [signal-outreach](https://github.com/OrenSegal/first-to-first-sale). It takes a signal-scout report and produces the next action per type: an outreach sequence for an Individual, a content/GTM brief for a Segment, or a BD pitch one-pager for a Company.
+For the next step, use [signal-outreach](https://github.com/OrenSegal/signal-skills/tree/main/plugins/signal-outreach). It takes a signal-scout report and produces the next action per type: an outreach sequence for an Individual, a content/GTM brief for a Segment, or a BD pitch one-pager for a Company.
 
 ## Install
 
