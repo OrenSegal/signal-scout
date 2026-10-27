@@ -19,9 +19,9 @@ Non-negotiables (see SKILL.md "Research safely"): public signals only, no scrape
 - Read `skills/signal-scout/references/roadmap.md` first — the roadmap is frozen on new mechanisms until real outcome data exists; prefer fixes and infrastructure over features.
 - Scripts are Python 3.10+ stdlib only — no new dependencies.
 - Run the tests: `cd skills/signal-scout/scripts && python3 -m pytest` (or `python3 test_*.py` individually).
-- `verify_sources.py` and `signal_scout_core.py` are the product's load-bearing claim (open-book source verification); be paranoid about regressions there — it shipped inverted once (see CHANGELOG 1.3.0).
+- `verify_sources.py` and `signal_scout_core.py` are the product's load-bearing claim (open-book source verification); be paranoid about regressions there: an inverted check would certify fabricated evidence as "Verified".
 - Keep `SKILL.md` compact: schemas belong in `references/report-artifact.md`, mechanical checks belong in `finalize.py`, not prose.
 
 ## Install targets
 
-Claude Code reads `~/.claude/skills/signal-scout`; Codex reads `~/.agents/skills/signal-scout`; OpenCode reads both. `node bin/install.js` writes to each of those it detects a tool for (falling back to Claude Code), and `./install.sh` writes both. The published npm package (1.0.1, `npx signal-scout`) still writes only `~/.agents/skills/signal-scout`; `--dir` overrides the destination (e.g. a project-local `.claude/skills/` or `.agents/skills/`). Claude Cowork does not load skills from `~/.claude/skills`; it uses skills enabled on the claude.ai account.
+Claude Code reads `~/.claude/skills/signal-scout`; Codex reads `~/.agents/skills/signal-scout`; OpenCode reads both. `node bin/install.js` writes to each of those it detects a tool for (falling back to Claude Code), and `./install.sh` writes both. `npx signal-scout` installs the published npm package (1.0.1), which is older than this repo, so it installs an earlier version of the skill, and only to `~/.agents/skills/signal-scout`; `--dir` overrides the destination (e.g. a project-local `.claude/skills/` or `.agents/skills/`). Claude Cowork does not load skills from `~/.claude/skills`; it uses skills enabled on the claude.ai account.

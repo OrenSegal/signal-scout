@@ -78,8 +78,8 @@ leaves fetching the URL — the actual hard part — to someone else. Google's
 tooling (ZoomInfo, Apollo) universally means *verified contact data* — is
 this email deliverable — never *verified claim*. Treat this script as the
 product's load-bearing claim, not a lint step, and be correspondingly
-paranoid about regressions in it: it shipped inverted from 1.0.0 through
-1.2.0, certifying fabricated evidence as "Verified" (see CHANGELOG 1.3.0).
+paranoid about regressions in it: an inverted check would certify
+fabricated evidence as "Verified".
 
 ## 3. Watch mode / recurring scout — shipped, opt-in per product
 
