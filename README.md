@@ -64,9 +64,9 @@ For the next step, use [signal-outreach](https://github.com/OrenSegal/signal-ski
 
 ## Install
 
-All three methods install the same skill files.
+The marketplace and git methods install the skill from this repo. The npm package (1.0.1) is older than this repo, so `npx signal-scout` installs an earlier version of the skill.
 
-### npx (recommended, no clone needed)
+### npx (no clone needed, older version)
 
 ```bash
 npx signal-scout
