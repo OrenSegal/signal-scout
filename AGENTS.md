@@ -24,4 +24,4 @@ Non-negotiables (see SKILL.md "Research safely"): public signals only, no scrape
 
 ## Install targets
 
-The skill installs to `~/.agents/skills/signal-scout` (`npx signal-scout`), which Claude Code, Claude Cowork, OpenCode, and other agentskills-compatible hosts can read; `--dir` overrides the destination (e.g. a Codex skills directory or a project-local `.agents/skills/`).
+Claude Code reads `~/.claude/skills/signal-scout`; Codex reads `~/.agents/skills/signal-scout`; OpenCode reads both. `node bin/install.js` writes to each of those it detects a tool for (falling back to Claude Code), and `./install.sh` writes both. The published npm package (1.0.1, `npx signal-scout`) still writes only `~/.agents/skills/signal-scout`; `--dir` overrides the destination (e.g. a project-local `.claude/skills/` or `.agents/skills/`). Claude Cowork does not load skills from `~/.claude/skills`; it uses skills enabled on the claude.ai account.
