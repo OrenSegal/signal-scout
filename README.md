@@ -72,11 +72,18 @@ The marketplace and git methods install the skill from this repo. The npm packag
 npx signal-scout
 ```
 
-This copies the skill into `~/.agents/skills/signal-scout`, where Claude Code and OpenCode both look for it. Use `--dir` to install somewhere else:
+The published npm package (1.0.1) copies the skill into `~/.agents/skills/signal-scout` only. Codex and OpenCode read that folder; Claude Code does not. For Claude Code, point it at the Claude Code folder with `--dir`:
 
 ```bash
-npx signal-scout --dir ./.agents/skills/signal-scout
+npx signal-scout --dir ~/.claude/skills/signal-scout
 ```
+
+The installer in this repo (`node bin/install.js` from a clone) copies the skill into the folder of each tool it finds on your machine:
+
+- `~/.claude/skills/signal-scout` for Claude Code (if `~/.claude` exists)
+- `~/.agents/skills/signal-scout` for Codex (if `~/.codex`, `~/.agents`, or `~/.config/opencode` exists)
+
+OpenCode reads both folders. If none of those exist, it installs for Claude Code. `--dir` overrides the destination.
 
 ### Claude Code plugin marketplace
 
@@ -98,6 +105,11 @@ cd signal-scout
 Or, from the same cloned directory, copy the skill folder yourself:
 
 ```bash
+# Claude Code (OpenCode also reads this folder)
+mkdir -p ~/.claude/skills/signal-scout
+cp -r skills/signal-scout/. ~/.claude/skills/signal-scout/
+
+# Codex (OpenCode also reads this folder)
 mkdir -p ~/.agents/skills/signal-scout
 cp -r skills/signal-scout/. ~/.agents/skills/signal-scout/
 ```
@@ -150,7 +162,7 @@ python3 skills/signal-scout/scripts/generate_report.py analysis.json outputs/sig
 
 ## Compatibility
 
-`SKILL.md` uses standard agent-skills frontmatter and refers to capabilities (web search, web fetch, shell) instead of host-specific tool names. Install to `~/.agents/skills/` for Claude Code, Cowork, or OpenCode, or pass `--dir` to target another host's skills directory. Codex and other agents that read AGENTS.md get repo-level guidance from [`AGENTS.md`](AGENTS.md).
+`SKILL.md` uses standard agent-skills frontmatter and refers to capabilities (web search, web fetch, shell) instead of host-specific tool names. Claude Code reads personal skills from `~/.claude/skills/` ([docs](https://code.claude.com/docs/en/skills)); Codex reads user skills from `~/.agents/skills/` ([docs](https://learn.chatgpt.com/docs/build-skills)); OpenCode reads both ([docs](https://opencode.ai/docs/skills/)). Claude Cowork does not load skills from `~/.claude/skills/`; it uses skills enabled on your claude.ai account. Pass `--dir` to target another host's skills directory. Codex and other agents that read AGENTS.md get repo-level guidance from [`AGENTS.md`](AGENTS.md).
 
 ## JSON schema
 
