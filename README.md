@@ -35,7 +35,9 @@ In most AI prospecting flows, the model that writes a claim about a prospect als
 - stamps each prospect with `verified_at` so the report can show how old each check is,
 - flags outreach openers that add specifics their evidence doesn't support.
 
-The practical effect: a prospect whose evidence is clearly missing from its source is dropped, opener included, before you see it. Partial matches stay in the report tagged Paraphrased, for you to check. That tier has no check on specifics, so a made-up detail about a real company ("$12M Series A led by Sequoia") can land there instead of being dropped.
+The practical effect: a prospect whose evidence is clearly missing from its source is dropped, opener included, before you see it. Partial matches stay in the report tagged Paraphrased, for you to check. Numbers, capitalized names and identifiers like `Series A` in the evidence must be on the page, so a made-up detail about a real company ("$12M Series A led by Sequoia") is tagged Not on page and dropped. The check is lexical and does not look at context: a wrong number that appears elsewhere on the page still passes.
+
+Source URLs are treated as untrusted. Only http and https are fetched, and loopback, private and cloud-metadata addresses are refused, also after a redirect or a DNS answer, and tagged Broken source. If a proxy is configured the proxy makes the connection, so the target is checked first and DNS rebinding is not prevented. `--allow-private-addresses` turns the address check off for checking a local copy of a page.
 
 How this differs from grounding checkers: the ones I looked at (Vectara HHEM, Google `checkGrounding`, Ragas, Patronus Lynx, Galileo Luna, Guardrails) score a claim against text you supply and leave fetching the URL to you. In GTM tooling, "verified" usually means verified contact data (is this email deliverable), not a verified claim.
 

@@ -24,6 +24,7 @@ import unittest
 from signal_scout_core import (
     QUOTED_THRESHOLD,
     SUPPORTED_THRESHOLD,
+    TIER_LOW_MATCH,
     TIER_UNSUPPORTED,
     TIER_UNVERIFIED,
     TIER_VERIFIED,
@@ -123,6 +124,62 @@ class TestTierBoundaries(unittest.TestCase):
     def test_empty_evidence_is_unverified(self):
         tier, _, _, _ = tier_for_evidence("", page_of(20_000, containing=QUOTE))
         self.assertEqual(tier, TIER_UNVERIFIED)
+
+
+class TestSpecifics(unittest.TestCase):
+    """A made-up detail about a real company shares the company's name with the
+    page, so it clears the topical signal. Its specifics are what give it away."""
+
+    ACME_PAGE = (
+        "Acme Robotics builds warehouse picking arms for mid-size retailers. "
+        "The company has added engineers across its Austin office this year. "
+    ) * 4
+
+    def test_fabricated_funding_round_on_a_real_company_is_unsupported(self):
+        tier, note, _, _ = tier_for_evidence("Acme Robotics raised a $12M Series A led by Sequoia", self.ACME_PAGE)
+        self.assertEqual(tier, TIER_UNSUPPORTED)
+        self.assertIn("Sequoia", note)
+        self.assertIn("12", note)
+
+    def test_wrong_number_in_a_quote_is_unsupported(self):
+        page = "We raised a $15M Series A led by Sequoia last spring. " * 10
+        self.assertEqual(tier_for_evidence("raised a $12M Series A led by Sequoia", page)[0], TIER_UNSUPPORTED)
+
+    def test_wrong_scale_is_unsupported(self):
+        page = "We raised a $40 million Series B led by Northwind last spring. " * 10
+        tier, note, _, _ = tier_for_evidence("raised a $40 billion Series B led by Northwind", page)
+        self.assertEqual(tier, TIER_UNSUPPORTED)
+        self.assertIn("40 billion", note)
+
+    def test_wrong_one_letter_identifier_is_unsupported(self):
+        page = "We raised a $40 million Series B led by Northwind last spring. " * 10
+        tier, note, _, _ = tier_for_evidence("raised a $40 million Series C led by Northwind", page)
+        self.assertEqual(tier, TIER_UNSUPPORTED)
+        self.assertIn("Series C", note)
+
+    def test_formatting_differences_are_not_missing_specifics(self):
+        page = "We raised a $12 million Series A led by Sequoia last spring. " * 10
+        for evidence in ("raised a $12M Series A led by Sequoia", "raised a $12.0 million Series A led by Sequoia"):
+            self.assertEqual(tier_for_evidence(evidence, page)[0], TIER_VERIFIED, evidence)
+
+    def test_paraphrase_with_its_specifics_on_the_page_stays_low_match(self):
+        tier, _, _, _ = tier_for_evidence("Acme is adding engineering staff in Austin", self.ACME_PAGE)
+        self.assertEqual(tier, TIER_LOW_MATCH)
+
+    def test_sentence_initial_word_is_not_a_name(self):
+        tier, note, _, _ = tier_for_evidence(
+            "Acme Robotics builds warehouse picking arms for mid-size retailers. "
+            "Moreover the company has added engineers.",
+            self.ACME_PAGE,
+        )
+        self.assertNotEqual(tier, TIER_UNSUPPORTED, note)
+
+    def test_invented_name_opening_a_later_sentence_is_unsupported(self):
+        tier, note, _, _ = tier_for_evidence(
+            "Acme Robotics builds warehouse picking arms for mid-size retailers. Sequoia led the round.",
+            self.ACME_PAGE,
+        )
+        self.assertEqual(tier, TIER_UNSUPPORTED, note)
 
 
 if __name__ == "__main__":
