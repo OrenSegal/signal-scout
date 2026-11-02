@@ -352,7 +352,7 @@ class FinalizeWithVerification(unittest.TestCase):
                 for key in ("http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY", "all_proxy", "ALL_PROXY"):
                     env.pop(key, None)
                 result = subprocess.run(
-                    [sys.executable, str(SCRIPTS / "finalize.py"), str(src), "--no-people", "--timeout", "5"],
+                    [sys.executable, str(SCRIPTS / "finalize.py"), str(src), "--no-people", "--timeout", "5", "--allow-private-addresses"],
                     capture_output=True, text=True, env=env, timeout=120,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
