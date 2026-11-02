@@ -35,7 +35,7 @@ In most AI prospecting flows, the model that writes a claim about a prospect als
 - stamps each prospect with `verified_at` so the report can show how old each check is,
 - flags outreach openers that add specifics their evidence doesn't support.
 
-The practical effect: a prospect whose evidence doesn't hold up is dropped, opener included, before you see it, so the output needs less cleanup before you send anything.
+The practical effect: a prospect whose evidence is clearly missing from its source is dropped, opener included, before you see it. Partial matches stay in the report tagged Paraphrased, for you to check. That tier has no check on specifics, so a made-up detail about a real company ("$12M Series A led by Sequoia") can land there instead of being dropped.
 
 How this differs from grounding checkers: the ones I looked at (Vectara HHEM, Google `checkGrounding`, Ragas, Patronus Lynx, Galileo Luna, Guardrails) score a claim against text you supply and leave fetching the URL to you. In GTM tooling, "verified" usually means verified contact data (is this email deliverable), not a verified claim.
 
