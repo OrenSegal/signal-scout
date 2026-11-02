@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: `tier_for_evidence` had no check on specifics, so "$12M Series A led by Sequoia" on a page naming only the company came back Paraphrased and stayed in the report. Numbers, scale words, capitalized names and identifiers like `Series A` now have to be on the page, or the prospect is Not on page. Ported from cited.
+- Fixed: `verify_sources.py` fetched any `source_url`, including loopback and cloud-metadata addresses, and the tier told the caller what was there. All fetches now go through `safe_fetch.py`, ported from cited, which refuses non-http(s) schemes and non-public addresses, also after a redirect or a DNS answer. A refused URL is Broken source and is not sent to an archive. Wayback snapshot URLs must live on archive.org. Added `--allow-private-addresses` to `verify_sources.py` and `finalize.py`.
 - Added no-people mode, the hard filter for public output. `finalize.py --no-people` (or `"people": false` in the analysis JSON) drops Individuals before verification, drops prospects whose only source is a personal profile or post, redacts person names, handles, personal emails, and profile URLs from every other section after verification, and writes all outputs to `public/` without touching the input. `generate_report.py` honors `"people": false` too. The shared logic is `scripts/people_filter.py`. `--focus companies` still only prioritizes.
 - MCP server: both tools take `people` (default `False`), so the server names no one unless asked. `focus="individuals"` requires `people=True`.
 - Fixed: the MCP server called `verify_sources.py --apply`, a flag that does not exist, so verification never ran. It now passes `--annotate-out` and `--handoff-out` as its README already said.

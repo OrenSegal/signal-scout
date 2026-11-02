@@ -125,7 +125,7 @@ def validate_prospect(prospect_type: str, item: dict[str, Any]) -> list[str]:
 
 TIER_VERIFIED = "verified"          # source fetched, evidence is substantially quoted from the live page
 TIER_SNIPPET_ONLY = "snippet_only"  # source blocked automated fetch (e.g. Reddit); snippet-sourced only
-TIER_LOW_MATCH = "low_match"        # source fetched, evidence is a paraphrase — supported but not quoted
+TIER_LOW_MATCH = "low_match"        # source fetched, evidence is a paraphrase with its specifics on the page, not quoted
 TIER_UNSUPPORTED = "unsupported"    # source fetched and readable, but the claim is not on the page at all
 TIER_UNVERIFIED = "unverified"      # not checked, or page yielded no extractable text to check against
 TIER_BROKEN = "broken"              # source unreachable or invalid — should not reach a shipped report
@@ -219,6 +219,93 @@ def evidence_signals(evidence: str, page_text: str) -> tuple[float, float]:
     return quoted, topical
 
 
+def _normalize_number(number: str) -> str:
+    """ "1,000" and "1000" are one number, as are "15.0" and "15". """
+    return re.sub(r"\.0+$", "", number.replace(",", ""))
+
+
+def _numbers(text: str) -> set[str]:
+    return {_normalize_number(n) for n in re.findall(r"\d+(?:[.,]\d+)*", str(text or ""))}
+
+
+_SCALE_WORDS = {
+    "k": "thousand", "thousand": "thousand",
+    "m": "million", "mn": "million", "mm": "million", "million": "million",
+    "b": "billion", "bn": "billion", "billion": "billion",
+    "t": "trillion", "tn": "trillion", "trillion": "trillion",
+    "%": "percent", "percent": "percent",
+}
+
+
+def _quantities(text: str) -> set[str]:
+    """Numbers carrying a scale word, normalized: "$40M" and "40 million" both
+    become "40 million". A bare number check can't tell $40 million from
+    $40 billion; this can."""
+    found = set()
+    pattern = r"(\d+(?:[.,]\d+)*)\s*(%|[A-Za-z]+)\b|(\d+(?:[.,]\d+)*)\s*(%)"
+    for m in re.finditer(pattern, str(text or "")):
+        num, unit = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
+        scale = _SCALE_WORDS.get(unit.lower())
+        if scale:
+            found.add(f"{_normalize_number(num)} {scale}")
+    return found
+
+
+def _letter_identifiers(text: str) -> set[str]:
+    """Capitalized word followed by a single capital letter: "Series B",
+    "Class A". The one-letter part is the fact, and it's too short to pass
+    the name check on its own."""
+    return {f"{w} {letter}" for w, letter in re.findall(r"\b([A-Z][a-z]+) ([A-Z])\b", str(text or ""))
+            if letter != "I"}  # the pronoun, as in "Yesterday I"
+
+
+# Sentence ends, except after a title or an initial ("Dr. Lee", "J. Lee"), whose
+# next word is a name and not capitalized by position.
+_SENTENCE_BREAK = re.compile(
+    r"(?<=[.!?])(?<!\bMr\.)(?<!\bMs\.)(?<!\bDr\.)(?<!\bSt\.)(?<!\bMrs\.)(?<!\bProf\.)(?<!\b[A-Z]\.)"
+    r"[\"')\]]*\s+(?=[\"'(\[]*[A-Z])"
+)
+
+
+# Ordinary words that open a later sentence. Anything else capitalized there may be a name.
+_SENTENCE_OPENERS = frozenset({
+    "moreover", "however", "furthermore", "additionally", "also", "meanwhile", "still", "yet",
+    "then", "next", "finally", "first", "second", "third", "instead", "overall", "today",
+    "recently", "later", "previously", "currently", "thus", "therefore", "similarly", "likewise",
+    "nevertheless", "otherwise", "besides", "both", "many", "most", "some", "several", "after",
+    "before", "since", "while", "when", "although", "because", "if", "in", "on", "at", "by",
+    "for", "from", "with", "as", "to", "of",
+})
+
+
+def missing_specifics(evidence: str, page_text: str) -> list[str]:
+    """Numbers (with their scale word), capitalized names and one-letter
+    identifiers like "Series B" in the evidence that do not appear on the page.
+    Copied from cited's tiering_core.py.
+
+    A fabricated claim about a real entity (a funding round, an investor, a
+    date) shares the entity's name with the page, so it clears the topical
+    signal. Its specifics are what give it away. Lexical and English-centric:
+    capitalized tokens stand in for names. The claim's first token is skipped
+    because it is capitalized by position, and so is a later sentence's first
+    token when it is an ordinary opener.
+    """
+    missing = sorted(_numbers(evidence) - _numbers(page_text))
+    missing += sorted(_quantities(evidence) - _quantities(page_text))
+    page_lower = " " + " ".join(_words(page_text)) + " "
+    missing += sorted(i for i in _letter_identifiers(evidence)
+                      if " " + " ".join(_words(i)) + " " not in page_lower)
+    page_words = set(_words(page_text))
+    for i, sentence in enumerate(_SENTENCE_BREAK.split(str(evidence or ""))):
+        tokens = re.findall(r"[A-Za-z][A-Za-z']*", sentence)
+        skip_first = i == 0 or (tokens and (tokens[0].lower() in _STOPWORDS or tokens[0].lower() in _SENTENCE_OPENERS))
+        for token in tokens[1:] if skip_first else tokens:
+            if len(token) >= 2 and token[0].isupper() and token.lower() not in page_words:
+                if token not in missing:
+                    missing.append(token)
+    return missing
+
+
 def opener_grounding_note(opener: str, evidence: str) -> str:
     """Return a warning if an individual's outreach opener references specifics
     absent from its own checked evidence, else "".
@@ -258,6 +345,14 @@ def tier_for_evidence(evidence: str, page_text: str) -> tuple[str, str, float, f
     quoted, topical = evidence_signals(evidence, page_text)
     if not str(evidence or "").strip():
         return TIER_UNVERIFIED, "No evidence text to verify", quoted, topical
+    missing = missing_specifics(evidence, page_text)
+    if missing:
+        return (
+            TIER_UNSUPPORTED,
+            "Evidence's specifics are not on the live page: " + ", ".join(missing),
+            quoted,
+            topical,
+        )
     if quoted >= QUOTED_THRESHOLD:
         return TIER_VERIFIED, "", quoted, topical
     if quoted >= SUPPORTED_THRESHOLD or topical >= SUPPORTED_THRESHOLD:

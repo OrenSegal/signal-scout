@@ -10,6 +10,7 @@ few output lines instead of four calls and four transcripts.
 Usage:
     python3 finalize.py analysis.json [--out report.html] [--validate-only]
         [--skip-verify] [--no-csv] [--no-people] [--timeout 10]
+        [--allow-private-addresses]
 
 No-people mode (--no-people, or `"people": false` in the input JSON) is the
 hard filter for public output: Individuals are dropped before verification,
@@ -218,6 +219,9 @@ def main() -> None:
                         "or profile URLs anywhere; outputs go to <input dir>/public/. Also on when the "
                         "input JSON has \"people\": false")
     parser.add_argument("--timeout", type=int, default=10, help="Per-fetch timeout for verification")
+    parser.add_argument("--allow-private-addresses", action="store_true",
+                        help="Let source_url reach loopback and private addresses during verification. "
+                        "For checking a local copy of a page; never on input you did not write")
     args = parser.parse_args()
 
     input_path = args.input.resolve()
@@ -271,6 +275,7 @@ def main() -> None:
             "--timeout", str(args.timeout),
             "--annotate-out", str(verify_path),
             "--handoff-out", str(verify_handoff),
+            *(["--allow-private-addresses"] if args.allow_private_addresses else []),
         ])
         # Re-read the annotated JSON rather than parsing the verifier's table —
         # print only what needs action, not every verified row.
