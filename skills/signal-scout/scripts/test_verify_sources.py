@@ -17,13 +17,18 @@ be indistinguishable from a 404 or a DNS failure in the output.
 
 from __future__ import annotations
 
+import http.server
 import json
+import socket
 import sys
 import tempfile
+import threading
 import unittest
+from collections import Counter
 from pathlib import Path
 from unittest import mock
 
+import safe_fetch
 import verify_sources
 from signal_scout_core import TIER_BROKEN, TIER_SNIPPET_ONLY, TIER_VERIFIED
 
@@ -286,6 +291,182 @@ class TestTextExtractor(unittest.TestCase):
         self.assertIn("giant Google Sheet", text)
         self.assertIn("Inventory pain", text)
         self.assertNotIn("should not appear", text)
+
+
+SECRET_PAGE = "<p>INTERNAL-SECRET metadata token " + "filler words " * 40 + "</p>"
+SECRET_EVIDENCE = "INTERNAL-SECRET metadata token"
+
+
+class TestFetchGuard(unittest.TestCase):
+    """source_url comes from an agent and can point anywhere, so the tier must
+    not work as an oracle for what an internal address serves. Each "never
+    contacted" check reads the server's hit counter: a refused fetch and one
+    that reached a service and then failed look the same from the result."""
+
+    def setUp(self):
+        self.hits: Counter[str] = Counter()
+        hits = self.hits
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                path = self.path.split("?")[0]
+                hits[path] += 1
+                if path.startswith("/redirect-to/"):
+                    self.send_response(302)
+                    self.send_header("Location", "http://" + path[len("/redirect-to/"):])
+                    self.end_headers()
+                    return
+                if path == "/wayback":
+                    body = json.dumps({"archived_snapshots": {"closest": {
+                        "available": True, "timestamp": "20260801000000",
+                        "url": f"http://archive.test:{self.server.server_port}/snapshot",
+                    }}}).encode()
+                else:
+                    body = SECRET_PAGE.encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        self.httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.port = self.httpd.server_address[1]
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+        self.addCleanup(self.httpd.server_close)
+        self.addCleanup(self.httpd.shutdown)
+        patcher = mock.patch.object(verify_sources, "POLICY", safe_fetch.FetchPolicy())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def fake_dns(self, mapping: dict[str, str | list[str]]):
+        real = socket.getaddrinfo
+
+        def resolver(host, port, *args, **kwargs):
+            key = host.decode() if isinstance(host, bytes) else host
+            if key in mapping:
+                ips = mapping[key]
+                ips = [ips] if isinstance(ips, str) else ips
+                return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, port)) for ip in ips]
+            return real(host, port, *args, **kwargs)
+
+        return mock.patch.object(socket, "getaddrinfo", resolver)
+
+    def assert_refused(self, url: str):
+        with mock.patch.object(verify_sources, "fetch_wayback") as wayback, \
+                mock.patch.object(verify_sources, "fetch_archive_ph") as archive_ph:
+            tier, note, quoted, topical = verify_sources.check_source(url, SECRET_EVIDENCE, 3)
+        self.assertEqual(tier, TIER_BROKEN, url)
+        self.assertEqual((quoted, topical), (0.0, 0.0), url)
+        self.assertIn("Refused", note, url)
+        wayback.assert_not_called()  # an internal URL is not sent to a third party
+        archive_ph.assert_not_called()
+        self.assertEqual(sum(self.hits.values()), 0, f"{url} reached the server")
+
+    def test_control_the_fixture_is_reachable_when_allowed(self):
+        policy = safe_fetch.FetchPolicy(allow_private=True)
+        with mock.patch.object(verify_sources, "POLICY", policy):
+            tier, _, _, _ = verify_sources.check_source(f"http://127.0.0.1:{self.port}/", SECRET_EVIDENCE, 3)
+        self.assertEqual(tier, TIER_VERIFIED)
+
+    def test_local_address_spellings_are_never_contacted(self):
+        for host in (
+            "127.0.0.1", "localhost", "localhost.", "LOCALHOST", "127.0.0.1.",
+            "2130706433", "0x7f.1", "0x7f000001", "0177.0.0.1", "127.1",
+            "[::1]", "[::ffff:127.0.0.1]", "[::ffff:7f00:1]", "[64:ff9b::7f00:1]",
+            "[0:0:0:0:0:ffff:127.0.0.1]", "①②⑦.⓪.⓪.①", "１２７.０.０.１", "127.0.0.1%2f",
+            "user@127.0.0.1", "example.com@127.0.0.1", "169.254.169.254", "metadata.google.internal",
+        ):
+            with self.subTest(host=host):
+                self.assert_refused(f"http://{host}:{self.port}/latest/meta-data")
+
+    def test_non_http_schemes_are_refused(self):
+        for url in ("file:///etc/passwd", "ftp://example.com/x", "data:text/plain,hello"):
+            with self.subTest(url=url), self.assertRaises(safe_fetch.BlockedURL):
+                verify_sources.fetch_text(url, 3)
+
+    def test_hostname_resolving_to_loopback_is_never_contacted(self):
+        with self.fake_dns({"evil.test": "127.0.0.1"}):
+            self.assert_refused(f"http://evil.test:{self.port}/")
+
+    def test_hostname_with_any_private_record_is_refused(self):
+        with self.fake_dns({"mixed.test": ["93.184.215.14", "127.0.0.1"]}):
+            self.assert_refused(f"http://mixed.test:{self.port}/")
+
+    def test_connection_goes_to_the_address_that_was_checked(self):
+        # Rebinding: public for the check, loopback for a later lookup. There
+        # must be no later lookup; the socket connects to the checked answer.
+        answers = iter(["93.184.215.14", "127.0.0.1"])
+        real = socket.getaddrinfo
+
+        def rebinding(host, port, *args, **kwargs):
+            if host == "rebind.test":
+                return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (next(answers), port))]
+            return real(host, port, *args, **kwargs)
+
+        connected = []
+
+        def connect(_sock, sockaddr):
+            connected.append(sockaddr[0])
+            raise OSError("no network in tests")
+
+        with mock.patch.object(socket, "getaddrinfo", rebinding), mock.patch.object(socket.socket, "connect", connect):
+            status, text = verify_sources.fetch_text(f"http://rebind.test:{self.port}/", 3)
+        self.assertEqual((status, text), (None, ""))
+        self.assertEqual(connected, ["93.184.215.14"])
+
+    def test_redirect_to_a_local_address_is_not_followed(self):
+        policy = safe_fetch.FetchPolicy(allow_hosts=frozenset({"public.test"}))
+        url = f"http://public.test:{self.port}/redirect-to/127.0.0.1:{self.port}/secret"
+        with self.fake_dns({"public.test": "127.0.0.1"}), mock.patch.object(verify_sources, "POLICY", policy), \
+                mock.patch.object(verify_sources, "fetch_wayback") as wayback:
+            tier, note, _, _ = verify_sources.check_source(url, SECRET_EVIDENCE, 3)
+        self.assertEqual(tier, TIER_BROKEN)
+        self.assertIn("Refused", note)
+        wayback.assert_not_called()
+        self.assertEqual(self.hits["/secret"], 0)
+
+    def test_proxy_mode_still_refuses_local_targets(self):
+        policy = safe_fetch.FetchPolicy(use_env_proxy=True)
+        with mock.patch.object(verify_sources, "POLICY", policy):
+            self.assert_refused(f"http://127.0.0.1:{self.port}/")
+            with self.fake_dns({"evil.test": "127.0.0.1"}):
+                self.assert_refused(f"http://evil.test:{self.port}/")
+
+    def test_wayback_fallback_still_works_through_the_guard(self):
+        policy = safe_fetch.FetchPolicy(allow_hosts=frozenset({"archive.test"}))
+        api = f"http://archive.test:{self.port}/wayback?url="
+        with self.fake_dns({"archive.test": "127.0.0.1"}), mock.patch.object(verify_sources, "POLICY", policy), \
+                mock.patch.object(verify_sources, "WAYBACK_API", api):
+            snapshot_url, date_found, text = verify_sources.fetch_wayback("https://example.com/gone", 3)
+        self.assertEqual(snapshot_url, f"http://archive.test:{self.port}/snapshot")
+        self.assertEqual(date_found, "20260801")
+        self.assertIn(SECRET_EVIDENCE, text)
+
+    def test_wayback_answer_cannot_steer_the_fetcher_off_the_archive(self):
+        # elsewhere.test is exempt from the address check, so without a host
+        # check on the answer this snapshot URL would be fetched.
+        policy = safe_fetch.FetchPolicy(allow_hosts=frozenset({"archive.test", "elsewhere.test"}))
+        api = f"http://archive.test:{self.port}/wayback?url="
+        answer = {"archived_snapshots": {"closest": {
+            "available": True, "timestamp": "20260801000000", "url": f"http://elsewhere.test:{self.port}/internal"}}}
+        with self.fake_dns({"archive.test": "127.0.0.1", "elsewhere.test": "127.0.0.1"}), \
+                mock.patch.object(verify_sources, "POLICY", policy), mock.patch.object(verify_sources, "WAYBACK_API", api), \
+                mock.patch.object(verify_sources.json, "load", return_value=answer):
+            result = verify_sources.fetch_wayback("https://example.com/gone", 3)
+        self.assertEqual(result, ("", "", ""))
+        self.assertEqual(self.hits["/internal"], 0)
+
+    def test_allow_private_addresses_flag_reaches_a_local_source(self):
+        data = {"individuals": [{"name": "t", "source_url": f"http://127.0.0.1:{self.port}/", "evidence": SECRET_EVIDENCE}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out = Path(tmp) / "in.json", Path(tmp) / "out.json"
+            src.write_text(json.dumps(data), encoding="utf-8")
+            argv = ["verify_sources.py", str(src), "--annotate-out", str(out), "--allow-private-addresses"]
+            with mock.patch.object(sys, "argv", argv):
+                verify_sources.main()
+            self.assertEqual(json.loads(out.read_text(encoding="utf-8"))["individuals"][0]["verification_tier"], TIER_VERIFIED)
 
 
 if __name__ == "__main__":

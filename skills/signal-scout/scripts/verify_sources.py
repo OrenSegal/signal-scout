@@ -29,6 +29,11 @@ Exit code is non-zero if any source is unreachable (dead link, invalid URL) or
 any claim is missing from its live page. Paraphrase is reported, not failed —
 rewording a real signal is legitimate; inventing one is not.
 
+Every fetch goes through safe_fetch.py: source_url is untrusted, so non-http(s)
+schemes and loopback, private and cloud-metadata addresses are refused, also
+after a redirect or a DNS answer, and tier as Broken. --allow-private-addresses
+turns the address check off for checking a local copy of a page.
+
 Reddit's new UI (reddit.com / www.reddit.com) serves a client-side
 bot-verification interstitial to script fetches — HTTP 200, but the page is
 just a "please wait for verification" stub, not the real thread. old.reddit.com
@@ -45,6 +50,7 @@ snippet-only.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import re
 import sys
@@ -56,6 +62,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from safe_fetch import BlockedURL, FetchPolicy, open_url
 from signal_scout_core import (
     TIER_BROKEN,
     TIER_DISQUALIFYING,
@@ -65,6 +72,11 @@ from signal_scout_core import (
     opener_grounding_note,
     tier_for_evidence,
 )
+
+
+# urllib honored HTTP(S)_PROXY here before the guard existed, and a sandbox with
+# no direct route out needs it, so proxy mode follows the environment.
+POLICY = FetchPolicy(use_env_proxy=any(urllib.request.getproxies().get(s) for s in ("http", "https")))
 
 
 BOT_WALLED_DOMAINS = (
@@ -178,17 +190,23 @@ class _TextExtractor(HTMLParser):
 
 
 def fetch_text(url: str, timeout: int) -> tuple[int | None, str]:
+    """(status, text), or (None, "") if the fetch failed. Raises BlockedURL if
+    the fetch policy refuses the URL, a redirect or a resolved address."""
     request = urllib.request.Request(
         canonicalize_for_fetch(url), headers={"User-Agent": "Mozilla/5.0 (signal-scout verifier)"}
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with open_url(request, timeout, POLICY) as response:
             status = response.status
             charset = response.headers.get_content_charset() or "utf-8"
             raw = response.read(2_000_000).decode(charset, errors="ignore")
+    except BlockedURL:
+        raise
     except urllib.error.HTTPError as exc:
         return exc.code, ""
     except Exception as exc:
+        if isinstance(getattr(exc, "reason", None), BlockedURL):
+            raise exc.reason from exc
         print(f"fetch_text: {url} — {exc}", file=sys.stderr)
         return None, ""
     parser = _TextExtractor()
@@ -197,6 +215,13 @@ def fetch_text(url: str, timeout: int) -> tuple[int | None, str]:
 
 
 WAYBACK_API = "https://archive.org/wayback/available?url="
+
+
+def _is_archive_url(snapshot_url: str) -> bool:
+    """A snapshot must live on archive.org or the API's own host, so a spoofed
+    availability answer cannot point the fetcher anywhere else."""
+    host = (urlparse(snapshot_url).hostname or "").lower()
+    return host == urlparse(WAYBACK_API).hostname or host == "archive.org" or host.endswith(".archive.org")
 
 
 def fetch_wayback(url: str, timeout: int) -> tuple[str, str, str]:
@@ -212,7 +237,7 @@ def fetch_wayback(url: str, timeout: int) -> tuple[str, str, str]:
             WAYBACK_API + urllib.parse.quote(url, safe=""),
             headers={"User-Agent": "Mozilla/5.0 (signal-scout verifier)"},
         )
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with open_url(request, timeout, POLICY) as response:
             info = json.load(response)
         closest = (info.get("archived_snapshots") or {}).get("closest") or {}
         snapshot_url = closest.get("url") if closest.get("available") else ""
@@ -220,9 +245,13 @@ def fetch_wayback(url: str, timeout: int) -> tuple[str, str, str]:
     except Exception as exc:
         print(f"fetch_wayback: {url} — {exc}", file=sys.stderr)
         return "", "", ""
-    if not snapshot_url:
+    if not snapshot_url or not _is_archive_url(snapshot_url):
         return "", "", ""
-    status, text = fetch_text(snapshot_url, timeout)
+    try:
+        status, text = fetch_text(snapshot_url, timeout)
+    except BlockedURL as exc:
+        print(f"fetch_wayback: {url} — {exc}", file=sys.stderr)
+        return "", "", ""
     if status is not None and status < 400 and text:
         return snapshot_url, snapshot_date, text
     return "", "", ""
@@ -263,8 +292,14 @@ def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float
     each a fetch problem, not a fabrication signal, and each recoverable when
     an archived copy of the page exists. Wayback is tried first (it has a
     real lookup API); archive.ph is tried only if Wayback has no snapshot,
-    since it's best-effort and more likely to be rate-limited."""
-    status, page_text = fetch_text(url, timeout)
+    since it's best-effort and more likely to be rate-limited.
+
+    A URL the fetch policy refuses is Broken with no archive lookup: that
+    would hand an internal address to a third party."""
+    try:
+        status, page_text = fetch_text(url, timeout)
+    except BlockedURL as exc:
+        return TIER_BROKEN, f"Refused to fetch: {exc}", 0.0, 0.0
 
     live_failed = status is None or status >= 400
     too_thin = not live_failed and len(page_text.strip()) < 200
@@ -321,6 +356,12 @@ def main() -> None:
     parser.add_argument("input", type=Path)
     parser.add_argument("--timeout", type=int, default=10)
     parser.add_argument(
+        "--allow-private-addresses",
+        action="store_true",
+        help="Let source_url reach loopback and private addresses. For checking a local copy "
+        "of a page; never on input you did not write.",
+    )
+    parser.add_argument(
         "--annotate-out",
         type=Path,
         help="Write the input JSON back out with a verification_tier/verification_note "
@@ -335,6 +376,9 @@ def main() -> None:
         "consumer) without carrying dead links or unsupported claims forward.",
     )
     args = parser.parse_args()
+    if args.allow_private_addresses:
+        global POLICY
+        POLICY = dataclasses.replace(POLICY, allow_private=True)
 
     data = json.loads(args.input.read_text(encoding="utf-8"))
     results: list[tuple[str, str, str, str, float, float]] = []
