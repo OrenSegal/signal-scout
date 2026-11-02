@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.7.0
 
 - Fixed: `tier_for_evidence` had no check on specifics, so "$12M Series A led by Sequoia" on a page naming only the company came back Paraphrased and stayed in the report. Numbers, scale words, capitalized names and identifiers like `Series A` now have to be on the page, or the prospect is Not on page. Ported from cited.
 - Fixed: `verify_sources.py` fetched any `source_url`, including loopback and cloud-metadata addresses, and the tier told the caller what was there. All fetches now go through `safe_fetch.py`, ported from cited, which refuses non-http(s) schemes and non-public addresses, also after a redirect or a DNS answer. A refused URL is Broken source and is not sent to an archive. Wayback snapshot URLs must live on archive.org. Added `--allow-private-addresses` to `verify_sources.py` and `finalize.py`.
