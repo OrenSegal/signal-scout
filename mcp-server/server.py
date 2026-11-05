@@ -59,6 +59,7 @@ from people_filter import (  # noqa: E402
     redact_people,
     redact_text,
 )
+
 OUTPUT_DIR = Path(os.environ.get("SIGNAL_SCOUT_OUTPUT_DIR", str(Path.home() / ".signal-scout" / "reports")))
 MODEL = os.environ.get("SIGNAL_SCOUT_MODEL", "claude-sonnet-5")
 MAX_PAUSE_TURNS = 3  # server-tool loops resume automatically; cap resends so a stuck run can't loop forever

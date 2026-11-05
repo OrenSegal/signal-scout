@@ -29,7 +29,6 @@ from signal_scout_core import (
     TIER_VERIFIED,
 )
 
-
 # ── Per-type dimension specs ───────────────────────────────────────────────────
 
 DIMENSION_SPECS: dict[str, list[tuple[str, str]]] = {
