@@ -81,10 +81,12 @@ Environment variables (all optional):
 
 ## What's tested vs. not
 
-Tested without spending API money (mocked Anthropic client): the full
-pipeline — JSON parsing, `pause_turn` continuation, `refusal` handling,
-input validation, subprocess calls to `verify_sources.py`/`generate_report.py`,
-and usage metering.
+Nothing in `mcp-server/` has automated tests. There is no test file here and
+CI does not run this directory. The scripts it shells out to
+(`verify_sources.py`, `generate_report.py`) are covered by the tests under
+`skills/signal-scout/scripts/` and by `evals/pipeline/`. The server's own
+logic (JSON parsing, `pause_turn` continuation, `refusal` handling, input
+validation, usage metering) has not been exercised, with a mock or otherwise.
 
 **Not yet tested: an actual live call.** The `web_search_20260209` /
 `web_fetch_20260209` tool declarations and the `output_config.format` JSON
