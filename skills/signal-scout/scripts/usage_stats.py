@@ -17,7 +17,6 @@ Exit code is always 0 — this is a report, not a check.
 from __future__ import annotations
 
 import argparse
-import json
 import re
 from datetime import date
 from pathlib import Path

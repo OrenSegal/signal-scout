@@ -37,6 +37,8 @@ Generic "find me customers" prompts tend to return one flat list where nothing q
 
 For a full worked example, see [`examples/finder-report.json`](examples/finder-report.json) and the rendered [`examples/finder-report.html`](examples/finder-report.html).
 
+**Example status:** this example is a hand-written illustration of the output format, not a verified run. It names three Individuals, which breaks [COMPLIANCE.md](COMPLIANCE.md)'s rule that public proof pages carry none, and several of its source URLs are placeholders or no longer resolve. A real `--no-people` run that passes source verification will replace it.
+
 ## Source verification
 
 In most AI prospecting flows, the model that writes a claim about a prospect also grades its own confidence in that claim, and nothing makes it reopen the source. A self-graded `evidence_quality` score can't catch a bad claim for that reason.
@@ -156,7 +158,7 @@ python3 skills/signal-scout/scripts/finalize.py analysis.json --no-people
 
 It drops the Individuals section, removes any prospect whose only source is a personal profile or post, and redacts person names, handles, personal emails, and profile URLs from evidence quotes and every other section. All outputs go to a `public/` folder next to the input; the input is not modified. Setting `"people": false` in the JSON does the same. The MCP server uses this mode by default.
 
-The paid private report still includes Individuals, delivered only to the client, until a privacy lawyer has reviewed it. [COMPLIANCE.md](COMPLIANCE.md) has the rules and the filter's limits.
+Runs without `--no-people` still include Individuals. That output is private, delivered only to whoever commissioned the run, and Individuals stay in it until a privacy lawyer has reviewed the approach. [COMPLIANCE.md](COMPLIANCE.md) has the rules and the filter's limits.
 
 ## One-command pipeline
 

@@ -73,7 +73,6 @@ from signal_scout_core import (
     tier_for_evidence,
 )
 
-
 # urllib honored HTTP(S)_PROXY here before the guard existed, and a sandbox with
 # no direct route out needs it, so proxy mode follows the environment.
 POLICY = FetchPolicy(use_env_proxy=any(urllib.request.getproxies().get(s) for s in ("http", "https")))
