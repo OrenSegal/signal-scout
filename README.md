@@ -4,6 +4,10 @@
 
 signal-scout is an agent skill that finds early customers for a product. You give it a startup URL or a product description. You get back a short, scored shortlist of people, market segments, and companies worth approaching, each backed by a public source that was checked before the report was written.
 
+**[Open the example report](https://orensegal.github.io/signal-scout/finder-report.html)**, a real `--no-people` run on Bruno, published by GitHub Pages from [`examples/`](examples/).
+
+[![Summary of the example report (four segments, two companies, each Verified 2026-11-05), drawn from its JSON by docs/render_preview.py](docs/preview.svg)](https://orensegal.github.io/signal-scout/finder-report.html)
+
 It runs in Claude Code, Claude Cowork, OpenCode, Codex, and any [agent-skills](https://agentskills.io)-compatible host. It uses **public signals only**: no data brokers, no scraped emails or contact info, no private groups, no protected-trait targeting.
 
 ## Try it without an API key
@@ -37,7 +41,7 @@ Generic "find me customers" prompts tend to return one flat list where nothing q
 
 For a full worked example, see [`examples/finder-report.json`](examples/finder-report.json) and the rendered [`examples/finder-report.html`](examples/finder-report.html).
 
-**Example status:** this example is a hand-written illustration of the output format, not a verified run. It names three Individuals, which breaks [COMPLIANCE.md](COMPLIANCE.md)'s rule that public proof pages carry none, and several of its source URLs are placeholders or no longer resolve. A real `--no-people` run that passes source verification will replace it.
+**Example status:** this is a real `--no-people` run on [Bruno](https://www.usebruno.com/) (an open-source API client) made on 2026-11-05, and finalize.py re-fetched every cited source and marked all six prospects Verified.
 
 ## Source verification
 
