@@ -21,8 +21,8 @@ signal-scout is compliant-by-construction with the tightening GDPR/CCPA stance o
 A report can name individuals: the Individuals section, plus any name, handle, or profile link that turns up in an evidence quote. Three rules govern where that data may appear:
 
 1. **Every public or directory surface is Companies and Segments only.** That covers the Claude plugin directory, MCP registries, Apify, and any hosted demo.
-2. **A public proof page never carries Individuals.** Individuals live only in the client-gated deliverable.
-3. **The paid private report keeps Individuals for now, and only until a privacy lawyer reviews it.** The buyer is the controller for any outreach. If the review says the Individuals section makes the seller a data broker, or needs GDPR Art. 14 notices that cannot be met, Individuals are cut from the paid report too.
+2. **A public proof page never carries Individuals.** Individuals live only in private, access-controlled output.
+3. **Private output keeps Individuals for now, and only until a privacy lawyer reviews it.** Whoever acts on the report is the controller for any outreach. If the review says producing the Individuals section makes the operator a data broker, or needs GDPR Art. 14 notices that cannot be met, Individuals are cut from private output too.
 
 The hard filter that enforces rules 1 and 2 is `finalize.py --no-people` (or `"people": false` in the analysis JSON). The MCP server (`mcp-server/server.py`) applies it by default; a caller must pass `people=True` to get Individuals. `--focus companies` is not a filter: it only prioritizes companies, so people can still appear.
 
