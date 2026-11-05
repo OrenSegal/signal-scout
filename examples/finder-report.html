@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
-  <title>Shelfie</title>
+  <title>Bruno</title>
   <style>
     :root {
       --bg: #15130f;
@@ -135,7 +135,8 @@
     .stats-metrics > div { padding: 16px 18px; }
     .stats-metrics > div + div { border-left: 1px solid var(--line); }
     .stats span, .info-grid span, .glance-label, .evidence span, blockquote span,
-    .audit-card span, .comp-card span, .follow-ups span, .keywords span, .proof-points span {
+    .audit-card span, .comp-card span, .follow-ups span, .keywords span, .proof-points span,
+    .battle-card p span, .summary-grid > div > span {
       display: block; color: var(--muted); font: 700 10px inherit;
       letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px;
     }
@@ -195,24 +196,25 @@
       color: var(--muted); font-size: 13px; cursor: pointer; transition: color .15s, border-color .15s;
     }
     .link-btn:hover { color: var(--a); border-color: var(--a); }
-    .copy-row { margin-top: 8px; }
-    .copy-btn {
-      background: transparent; color: var(--a); border: 1px solid var(--a); border-radius: 8px;
-      padding: 7px 13px; font: 700 12px inherit; cursor: pointer; transition: background .15s, color .15s;
+    .prompt-block {
+      margin-top: 10px; border: 1px solid var(--line-strong); border-radius: 12px;
+      background: var(--panel2); padding: 12px 13px;
     }
-    .copy-btn:hover { background: var(--a); color: var(--fill-ink); }
-    .copy-btn.done { background: var(--a); color: var(--fill-ink); border-color: var(--a); }
-    .cli-btn {
-      display: flex; flex-direction: column; align-items: flex-start; gap: 5px; width: 100%;
-      max-width: 420px; padding: 9px 13px; text-align: left;
+    .prompt-text {
+      margin: 0 0 10px; padding: 0; background: none; border: 0; white-space: pre-wrap;
+      word-break: break-word; max-height: 220px; overflow-y: auto;
+      font: 400 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-soft);
     }
-    .cli-label { font: 650 12px inherit; }
-    .cli-uri {
-      display: block; width: 100%; font: 400 11px ui-monospace, SFMono-Regular, Menlo, monospace;
-      color: var(--muted); background: var(--panel2); border-radius: 5px; padding: 4px 7px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    .prompt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .prompt-btn {
+      display: inline-flex; align-items: center; gap: 5px; background: transparent; color: var(--a);
+      border: 1px solid var(--a); border-radius: 8px; padding: 7px 13px; font: 700 12px inherit;
+      cursor: pointer; text-decoration: none; transition: background .15s, color .15s;
     }
-    .cli-btn:hover .cli-uri { color: var(--fill-ink); background: color-mix(in srgb, var(--a) 22%, var(--panel2)); }
+    .prompt-btn:hover { background: var(--a); color: var(--fill-ink); }
+    .prompt-btn.done { background: var(--a); color: var(--fill-ink); border-color: var(--a); }
+    .prompt-btn.open-btn { color: var(--b); border-color: var(--b); }
+    .prompt-btn.open-btn:hover { background: var(--b); color: var(--fill-ink); }
     .rank { font: 800 19px inherit; color: var(--a); padding-top: 6px; }
     .identity h3 { font-size: 21px; letter-spacing: -.02em; margin: 4px 0 8px; }
     .badges { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -292,6 +294,21 @@
     .agent-card p { margin: 0; font-size: 12px; color: var(--muted); }
 
     .competitive { margin-bottom: 60px; }
+    .battle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 14px; }
+    .battle-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+    .battle-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .battle-head h4 { margin: 0; font-family: var(--font-display); font-size: 18px; }
+    .battle-card p { margin: 0 0 10px; font-size: 13.5px; color: var(--ink-soft); }
+    .battle-card p span { display: block; margin-bottom: 3px; }
+    .battle-card blockquote { margin: 0 0 10px; padding: 10px 14px; border-left: 3px solid var(--warn); background: var(--panel2); border-radius: 8px; font-size: 13px; color: var(--muted); }
+    .battle-card blockquote a { display: block; margin-top: 6px; color: var(--link); font-size: 12px; }
+    .client-summary { background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 26px 28px; margin: 0 0 30px; box-shadow: var(--shadow); }
+    .client-summary .section-head { margin-bottom: 14px; }
+    .client-summary .section-head p { max-width: none; color: var(--ink-soft); }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
+    .summary-grid ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 7px; font-size: 13.5px; color: var(--ink-soft); }
+    .trust-mark { color: var(--ok); font-weight: 650; }
+    .trust-mark b { font-weight: 800; }
     .comp-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; }
     .comp-card--full { grid-column: 1 / -1; }
     .comp-card span { margin-bottom: 8px; }
@@ -394,50 +411,46 @@
 
     <main id="main">
       <section class="hero">
-        <span class="eyebrow">Early-customer report · 2026-07-14</span>
-        <h1>Shelfie</h1>
-        <p class="verdict">Strong early-demand signals across all three prospect types: individuals actively requesting a tool, a repeated pantry-forgetting pattern worth targeting with content, and one company whose hiring signal points to a design-partner opportunity.</p>
-        <ul class="exec-summary"><li>Strongest signal: <b>MealPrepWeekly</b> (97/100). The video was posted 11 days ago and the creator is actively responding to comment suggestions.</li><li>3 individuals, 1 segments, 1 companies qualified. 1 high-intent. Average fit 86/100.</li><li>Biggest caveat: These are potential customers, markets, and partners inferred from public signals, not confirmed buyers.</li></ul>
-        <div class="action-row"><div class="action-cell"><span>Move 1</span><p>Community reply</p></div><div class="action-cell"><span>Move 2</span><p>YouTube reply</p></div><div class="action-cell"><span>Move 3</span><p>Email</p></div></div>
+        <span class="eyebrow">Early-customer report · 2026-11-05</span>
+        <h1>Bruno</h1>
+        <p class="verdict">Yes, with clear timing. Postman&#x27;s March 2026 one-user Free plan and its deprecated Scratch Pad create a dated trigger for small teams, and one IT services firm has already published a switch to Bruno. Segment and partner signals are strong; this no-people run lists no individuals by design.</p>
+        <ul class="exec-summary"><li>Strongest signal: <b>Small teams on Postman&#x27;s Free plan after the March 2026 one-user limit</b> (94/100). The change took effect in March 2026; legacy-plan teams move at renewal, so the decision point is still arriving for many of them.</li><li>4 segments, 2 companies qualified. 1 high-intent. Average fit 84/100.</li><li>Biggest caveat: No-people run: Individuals were not researched; forum and GitHub posters are not named anywhere.</li></ul>
+        <div class="action-row"><div class="action-cell"><span>Move 1</span><p>SEO/blog</p></div><div class="action-cell"><span>Move 2</span><p>Bruno docs import pages</p></div><div class="action-cell"><span>Move 3</span><p>Warm BD via public contact page</p></div></div>
       </section>
+
+      
 
       <section class="stats">
         <div class="stats-product">
           <span>Product</span>
-          <p>AI-powered kitchen intelligence that scans your pantry, predicts waste, and suggests recipes from what you already have. <a href="https://shelfie.app" target="_blank" rel="noreferrer">Visit ↗</a></p>
+          <p>Bruno: open-source, Git-native, offline API client for REST, GraphQL, gRPC and WebSocket, with paid support tiers for teams. <a href="https://www.usebruno.com/" target="_blank" rel="noreferrer">Visit ↗</a></p>
         </div>
         <div class="stats-metrics">
-          <div><span>Individuals</span><strong>3</strong></div>
-          <div><span>Segments</span><strong>1</strong></div>
-          <div><span>Companies</span><strong>1</strong></div>
+          <div><span>Individuals</span><strong>0</strong></div>
+          <div><span>Segments</span><strong>4</strong></div>
+          <div><span>Companies</span><strong>2</strong></div>
           <div><span>Completeness</span><strong>90%</strong></div>
         </div>
       </section>
 
       <div class="best-row">
         
-    <div class="best-card acc-a">
-      <span class="best-label">Best individual</span>
-      <h3>MealPrepWeekly</h3>
-      <p>The video was posted 11 days ago and the creator is actively responding to comment suggestions.</p>
-      <strong>97</strong>
-    </div>
     <div class="best-card acc-b">
       <span class="best-label">Best segment</span>
-      <h3>Sunday meal-preppers who forget their fridge contents by midweek</h3>
-      <p>The megathread format refreshes monthly and remains active — a durable, recurring channel rather than a one-off signal.</p>
-      <strong>77</strong>
+      <h3>Small teams on Postman&#x27;s Free plan after the March 2026 one-user limit</h3>
+      <p>The change took effect in March 2026; legacy-plan teams move at renewal, so the decision point is still arriving for many of them.</p>
+      <strong>94</strong>
     </div>
     <div class="best-card acc-c">
       <span class="best-label">Best company</span>
-      <h3>GreenPlate Co</h3>
-      <p>They&#x27;re hiring for this role now, which means budget is approved and the problem is prioritized this quarter.</p>
+      <h3>NashTech</h3>
+      <p>The write-up was published on 2026-07-29 after two weeks on a real project, so the evaluation is fresh.</p>
       <strong>84</strong>
     </div>
       </div>
 
       <div class="filter-bar" id="filterBar">
-        <button class="active" data-filter="all">All (5)</button>
+        <button class="active" data-filter="all">All (6)</button>
         <button data-filter="hot">High intent</button>
         <button data-filter="warm">Problem aware / trigger</button>
         <button data-filter="cool">Potential fit</button>
@@ -445,147 +458,6 @@
       </div>
 
       
-      <section>
-        <header class="section-head">
-          <h2>People to message</h2>
-          <p>Each tied to a public pain, demand, or timing signal with a real reply channel. Open the brief before any outreach.</p>
-        </header>
-        <div class="cards">
-          
-    <article id="individual-1" class="card card-individual reveal" data-stage="hot" data-score="97">
-      
-      <header class="card-head">
-        <div class="rank">01</div>
-        <div class="identity">
-          <span class="eyebrow">Individual</span>
-          <h3>MealPrepWeekly</h3>
-          <div class="badges">
-            <span class="stage hot">High intent</span>
-            
-            
-            
-          </div>
-        </div>
-        <div class="score" style="--score:97" aria-label="Fit score 97 out of 100">
-          <strong>97</strong><small>/100</small>
-        </div>
-        <button type="button" class="link-btn" data-anchor="individual-1" title="Copy link to this card" aria-label="Copy link to this card">↗</button>
-      </header>
-      <p class="glance">Published a YouTube video titled &#x27;I Keep Throwing Away Groceries&#x27; describing the exact problem of buying ingredients for meal prep but forgetting what&#x27;s in the fridge.</p>
-      
-      <details class="brief">
-        <summary>Full brief</summary>
-        <div class="info-grid"><div><span>Why it fits</span><p>Shelfie&#x27;s scan-and-track feature directly solves the &#x27;buy but forget&#x27; loop. The creator already uses manual spreadsheets.</p></div><div><span>Why now</span><p>The video was posted 11 days ago and the creator is actively responding to comment suggestions.</p></div><div><span>Channel</span><p>Reply to the YouTube comment thread where they ask for app suggestions</p></div><div><span>Caution</span><p>Confirm they haven&#x27;t already found a solution through the comments. Check the thread before reaching out.</p></div></div>
-        <blockquote><span>Suggested opener</span>Saw your video on the grocery waste cycle — the spreadsheet-to-trash loop is painfully familiar. We built a tool that scans your pantry with your camera and matches recipes to what&#x27;s actually there. Would a free trial be useful to test against your current system?</blockquote><div class="copy-row"><span class="copy-src" hidden>Refine this outreach opener to MealPrepWeekly on Reply to the YouTube comment thread where they ask for app suggestions, then get it ready for me to review before sending — never send it yourself.
-
-Pain signal: Published a YouTube video titled &#x27;I Keep Throwing Away Groceries&#x27; describing the exact problem of buying ingredients for meal prep but forgetting what&#x27;s in the fridge.
-Why it fits: Shelfie&#x27;s scan-and-track feature directly solves the &#x27;buy but forget&#x27; loop. The creator already uses manual spreadsheets.
-Why now: The video was posted 11 days ago and the creator is actively responding to comment suggestions.
-Source: https://www.youtube.com/watch?v=example1
-
-Draft opener:
-Saw your video on the grocery waste cycle — the spreadsheet-to-trash loop is painfully familiar. We built a tool that scans your pantry with your camera and matches recipes to what&#x27;s actually there. Would a free trial be useful to test against your current system?</span><button type="button" class="copy-btn cli-btn"><span class="cli-label">Copy prompt for Claude Code</span><code class="cli-uri">claude-cli://run?prompt=Refine%20this%20outreach%20opener%20t...</code></button></div><div class="follow-ups"><span>Follow-up sequence</span><ul><li><span>Follow-up 1</span><p>Quick follow-up — a few people in your comments mentioned apps that track pantry by manually entering items. Ours does it by photo scan, which might fit your workflow better. Happy to walk you through it in 5 minutes.</p></li><li><span>Follow-up 2</span><p>Found this — a creator with a similar setup switched to camera-based tracking and cut their waste by 60% in a month. Thought you&#x27;d find the comparison interesting: [link]. No pitch, just data.</p></li></ul></div>
-        <div class="evidence">
-          <div><span>Evidence</span><p>A 12-minute video with 45K views where the creator walks through their fridge, shows expired items, and asks followers for app recommendations.</p></div>
-          <div>
-            <span>Source</span>
-            <p>Social post · 2026-07-03</p>
-            <a href="https://www.youtube.com/watch?v=example1" target="_blank" rel="noreferrer">I Keep Throwing Away Groceries — YouTube ↗</a>
-          </div>
-        </div>
-        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Reachability</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div></div>
-      </details>
-    </article>
-    <article id="individual-2" class="card card-individual reveal" data-stage="warm" data-score="95">
-      
-      <header class="card-head">
-        <div class="rank">02</div>
-        <div class="identity">
-          <span class="eyebrow">Individual</span>
-          <h3>The Frugal Kitchen (Reddit user)</h3>
-          <div class="badges">
-            <span class="stage warm">Problem aware</span>
-            <span class="badge competitor">Uses Nofridge (mentioned in comments by other users)</span>
-            
-            
-          </div>
-        </div>
-        <div class="score" style="--score:95" aria-label="Fit score 95 out of 100">
-          <strong>95</strong><small>/100</small>
-        </div>
-        <button type="button" class="link-btn" data-anchor="individual-2" title="Copy link to this card" aria-label="Copy link to this card">↗</button>
-      </header>
-      <p class="glance">Posted a detailed thread on r/EatCheapAndHealthy describing spending $200/week on groceries and throwing away roughly $60 worth. Asked &#x27;is there an app that actually helps with this?&#x27;</p>
-      
-      <details class="brief">
-        <summary>Full brief</summary>
-        <div class="info-grid"><div><span>Why it fits</span><p>The user is already quantifying the problem and actively seeking a tool. Shelfie&#x27;s waste prediction and recipe matching address both the tracking and the utilization.</p></div><div><span>Why now</span><p>Posted 9 days ago. Still active in the thread responding to suggestions.</p></div><div><span>Channel</span><p>Reply in the Reddit thread</p></div><div><span>Caution</span><p>Reddit users value peer recommendations over brand accounts. Engage genuinely, not commercially.</p></div></div>
-        <blockquote><span>Suggested opener</span>The $60/week waste number is wild — and unfortunately common. We built Shelfie specifically for this: scan your fridge, get recipes matched to what&#x27;s actually there before it goes bad. It tracks expiry by sight. Would love your take on whether it fits your workflow.</blockquote><div class="copy-row"><span class="copy-src" hidden>Refine this outreach opener to The Frugal Kitchen (Reddit user) on Reply in the Reddit thread, then get it ready for me to review before sending — never send it yourself.
-
-Pain signal: Posted a detailed thread on r/EatCheapAndHealthy describing spending $200/week on groceries and throwing away roughly $60 worth. Asked &#x27;is there an app that actually helps with this?&#x27;
-Why it fits: The user is already quantifying the problem and actively seeking a tool. Shelfie&#x27;s waste prediction and recipe matching address both the tracking and the utilization.
-Why now: Posted 9 days ago. Still active in the thread responding to suggestions.
-Source: https://reddit.com/r/EatCheapAndHealthy/comments/example2
-
-Draft opener:
-The $60/week waste number is wild — and unfortunately common. We built Shelfie specifically for this: scan your fridge, get recipes matched to what&#x27;s actually there before it goes bad. It tracks expiry by sight. Would love your take on whether it fits your workflow.</span><button type="button" class="copy-btn cli-btn"><span class="cli-label">Copy prompt for Claude Code</span><code class="cli-uri">claude-cli://run?prompt=Refine%20this%20outreach%20opener%20t...</code></button></div><div class="follow-ups"><span>Follow-up sequence</span><ul><li><span>Follow-up 1</span><p>Saw some people in the thread suggesting spreadsheets — those work until you forget to update them. Shelfie updates by camera scan so the data stays current without manual effort. Happy to set you up with a free account.</p></li><li><span>Follow-up 2</span><p>Quick update — we just added a weekly &#x27;use it first&#x27; alert that tells you what to cook before anything expires. Thought that maps to exactly what you described. No strings, just try it.</p></li></ul></div>
-        <div class="evidence">
-          <div><span>Evidence</span><p>The post includes a photo of their fridge with expired items and a breakdown of their monthly waste cost. 47 comments, many suggesting apps.</p></div>
-          <div>
-            <span>Source</span>
-            <p>Forum · 2026-07-05</p>
-            <a href="https://reddit.com/r/EatCheapAndHealthy/comments/example2" target="_blank" rel="noreferrer">Is there an app that actually helps with food waste? ↗</a>
-          </div>
-        </div>
-        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Reachability</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div></div>
-      </details>
-    </article>
-    <article id="individual-3" class="card card-individual reveal" data-stage="warm" data-score="79">
-      
-      <header class="card-head">
-        <div class="rank">03</div>
-        <div class="identity">
-          <span class="eyebrow">Individual</span>
-          <h3>Zero Waste Chef (blog)</h3>
-          <div class="badges">
-            <span class="stage warm">Problem aware</span>
-            <span class="badge competitor">Uses NoWaste, Frost, Pantry Check, SuperCook (all named in the post)</span>
-            
-            
-          </div>
-        </div>
-        <div class="score" style="--score:79" aria-label="Fit score 79 out of 100">
-          <strong>79</strong><small>/100</small>
-        </div>
-        <button type="button" class="link-btn" data-anchor="individual-3" title="Copy link to this card" aria-label="Copy link to this card">↗</button>
-      </header>
-      <p class="glance">Published a blog post &#x27;Why I Deleted Every Food Waste App&#x27; critiquing existing tools for requiring manual entry, lacking recipe integration, and not understanding kitchen reality.</p>
-      
-      <details class="brief">
-        <summary>Full brief</summary>
-        <div class="info-grid"><div><span>Why it fits</span><p>Shelfie&#x27;s camera-scan approach directly addresses the manual-entry complaint. Recipe integration from pantry contents addresses the second major gap.</p></div><div><span>Why now</span><p>The post is still generating discussion. The author is responding to comments and hasn&#x27;t announced finding a solution.</p></div><div><span>Channel</span><p>Email via the blog&#x27;s contact page</p></div><div><span>Caution</span><p>The author is opinionated and public. If they like the product, their endorsement carries weight. If they don&#x27;t, respect the feedback and don&#x27;t push.</p></div></div>
-        <blockquote><span>Suggested opener</span>Read your post on deleting food waste apps — the manual-entry frustration is exactly why we built Shelfie to work by camera scan. No typing, just point your phone at the fridge. The recipe matching uses what&#x27;s actually there. Would love your honest take on whether it solves the gaps you outlined.</blockquote><div class="copy-row"><span class="copy-src" hidden>Refine this outreach opener to Zero Waste Chef (blog) on Email via the blog&#x27;s contact page, then get it ready for me to review before sending — never send it yourself.
-
-Pain signal: Published a blog post &#x27;Why I Deleted Every Food Waste App&#x27; critiquing existing tools for requiring manual entry, lacking recipe integration, and not understanding kitchen reality.
-Why it fits: Shelfie&#x27;s camera-scan approach directly addresses the manual-entry complaint. Recipe integration from pantry contents addresses the second major gap.
-Why now: The post is still generating discussion. The author is responding to comments and hasn&#x27;t announced finding a solution.
-Source: https://zerowastechef.com/blog/deleted-apps
-
-Draft opener:
-Read your post on deleting food waste apps — the manual-entry frustration is exactly why we built Shelfie to work by camera scan. No typing, just point your phone at the fridge. The recipe matching uses what&#x27;s actually there. Would love your honest take on whether it solves the gaps you outlined.</span><button type="button" class="copy-btn cli-btn"><span class="cli-label">Copy prompt for Claude Code</span><code class="cli-uri">claude-cli://run?prompt=Refine%20this%20outreach%20opener%20t...</code></button></div><div class="follow-ups"><span>Follow-up sequence</span><ul><li><span>Follow-up 1</span><p>Quick note — we read your critique of the &#x27;smart suggestions&#x27; in existing apps. Shelfie&#x27;s recipe engine scores by ingredient freshness and expiry urgency, not just preference. Different approach entirely. Happy to demo.</p></li><li><span>Follow-up 2</span><p>Found this interesting — a food blogger with a similar critique switched to camera-based tracking and wrote about the difference. Thought it&#x27;d resonate: [link].</p></li></ul></div>
-        <div class="evidence">
-          <div><span>Evidence</span><p>A 2,000-word post that names 4 specific apps and details exactly why each failed their workflow. Published 23 days ago with active comment discussion.</p></div>
-          <div>
-            <span>Source</span>
-            <p>Company page · 2026-06-21</p>
-            <a href="https://zerowastechef.com/blog/deleted-apps" target="_blank" rel="noreferrer">Why I Deleted Every Food Waste App ↗</a>
-          </div>
-        </div>
-        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div><div class="metric"><span>Reachability</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div></div>
-      </details>
-    </article>
-        </div>
-      </section>
       
       <section>
         <header class="section-head">
@@ -594,47 +466,176 @@ Read your post on deleting food waste apps — the manual-entry frustration is e
         </header>
         <div class="cards">
           
-    <article id="segment-1" class="card card-segment reveal" data-stage="warm" data-score="77">
+    <article id="segment-1" class="card card-segment reveal" data-stage="warm" data-score="94">
       
       <header class="card-head">
         <div class="rank">01</div>
         <div class="identity">
           <span class="eyebrow">Segment</span>
-          <h3>Sunday meal-preppers who forget their fridge contents by midweek</h3>
+          <h3>Small teams on Postman&#x27;s Free plan after the March 2026 one-user limit</h3>
           <div class="badges">
-            <span class="stage warm">Problem aware</span>
-            <span class="badge competitor">Uses Notion templates, Google Sheets (manual workarounds)</span>
-            
+            <span class="stage warm">Trigger present</span>
+            <span class="badge competitor">Uses Postman</span>
+            <span class="badge verify verified" data-verified-at="2026-11-05" title="">Verified</span>
             
           </div>
         </div>
-        <div class="score" style="--score:77" aria-label="Fit score 77 out of 100">
-          <strong>77</strong><small>/100</small>
+        <div class="score" style="--score:94" aria-label="Fit score 94 out of 100">
+          <strong>94</strong><small>/100</small>
         </div>
         <button type="button" class="link-btn" data-anchor="segment-1" title="Copy link to this card" aria-label="Copy link to this card">↗</button>
       </header>
-      <p class="glance">A recurring r/MealPrepSunday megathread where 12+ users independently describe the same cycle: prep ingredients on Sunday, forget what&#x27;s left by Wednesday, and buy duplicates.</p>
+      <p class="glance">Postman&#x27;s March 2026 plan change limits the Free plan to one user, so a team sharing a free workspace now has to buy seats or move.</p>
       
       <details class="brief">
         <summary>Full brief</summary>
-        <div class="info-grid"><div><span>Why it fits</span><p>Shelfie&#x27;s continuous scan plus expiry prediction and recipe matching is the exact solution to the described workflow gap, at the scale of a recurring, monthly-refreshed thread rather than one post.</p></div><div><span>Why now</span><p>The megathread format refreshes monthly and remains active — a durable, recurring channel rather than a one-off signal.</p></div><div><span>Channels</span><ul><li>SEO/blog use-case page targeting the exact query shape</li><li>Recurring, disclosed participation in the r/MealPrepSunday megathread</li><li>ASO copy update highlighting the midweek reminder feature</li></ul></div><div><span>Caution</span><p>Segment-level evidence, not an individual lead — engage the community with disclosed affiliation rather than treating this as one contact.</p></div></div>
-        <blockquote class="content-angle"><span>Content angle</span>Searchable — this pattern maps directly to a recurring query shape (&#x27;meal prep app that remembers what I have&#x27;) worth a dedicated use-case landing page and an SEO push, not a one-time reply.</blockquote><div class="copy-row"><span class="copy-src" hidden>Draft an SEO-ready page targeting the &#x27;Sunday meal-preppers who forget their fridge contents by midweek&#x27; segment.
+        <div class="info-grid"><div><span>Why it fits</span><p>Bruno collections are plain files in the team&#x27;s Git repo, so sharing them needs no per-seat workspace; the core app is free and open source.</p></div><div><span>Why now</span><p>The change took effect in March 2026; legacy-plan teams move at renewal, so the decision point is still arriving for many of them.</p></div><div><span>Channels</span><ul><li>SEO/blog migration guide</li><li>Bruno docs: Postman import page</li><li>Reply-when-relevant in r/webdev and r/QualityAssurance threads about the change</li></ul></div><div><span>Caution</span><p>Postman&#x27;s statement is about its plan structure, not about churn; how many teams actually leave is unmeasured.</p></div></div>
+        <blockquote class="content-angle"><span>Content angle</span>Searchable: a &#x27;Postman free plan one user limit: what small teams can do&#x27; guide that walks through exporting a shared workspace and committing it as a Bruno collection.</blockquote><div class="prompt-block"><pre class="prompt-text">Draft an SEO-ready page targeting the &#x27;Small teams on Postman&#x27;s Free plan after the March 2026 one-user limit&#x27; segment.
 
-Content angle: Searchable — this pattern maps directly to a recurring query shape (&#x27;meal prep app that remembers what I have&#x27;) worth a dedicated use-case landing page and an SEO push, not a one-time reply.
-Target keywords: meal prep pantry tracker, app that remembers what&#x27;s in my fridge, meal prep forget ingredients
-Proof points: 200+ comments in a single thread refresh describing the same buy-forget-rebuy cycle; At least 12 distinct users explicitly asking for an app recommendation in one thread
-Suggested channels: SEO/blog use-case page targeting the exact query shape, Recurring, disclosed participation in the r/MealPrepSunday megathread, ASO copy update highlighting the midweek reminder feature
+Content angle: Searchable: a &#x27;Postman free plan one user limit: what small teams can do&#x27; guide that walks through exporting a shared workspace and committing it as a Bruno collection.
+Target keywords: postman free plan one user, postman free team alternative, share postman collection without paid plan
+Proof points: Postman&#x27;s own docs: the Free plan is limited to one user and can&#x27;t create a team; Bruno&#x27;s pricing FAQ: no account or login, collaboration through any Git provider
+Suggested channels: SEO/blog migration guide, Bruno docs: Postman import page, Reply-when-relevant in r/webdev and r/QualityAssurance threads about the change
 
-Write a working draft (title, meta description, section outline) I can review before publishing.</span><button type="button" class="copy-btn cli-btn"><span class="cli-label">Copy prompt for Claude Code</span><code class="cli-uri">claude-cli://run?prompt=Draft%20an%20SEO-ready%20page%20targe...</code></button></div><div class="keywords"><span>Target keywords</span><div class="chip-row"><span class="chip">meal prep pantry tracker</span><span class="chip">app that remembers what&#x27;s in my fridge</span><span class="chip">meal prep forget ingredients</span></div></div><div class="proof-points"><span>Proof points</span><ul><li>200+ comments in a single thread refresh describing the same buy-forget-rebuy cycle</li><li>At least 12 distinct users explicitly asking for an app recommendation in one thread</li></ul></div>
+Write a working draft (title, meta description, section outline) I can review before publishing.</pre><div class="prompt-actions"><a class="prompt-btn open-btn" href="claude-cli://open?q=Draft%20an%20SEO-ready%20page%20targeting%20the%20%27Small%20teams%20on%20Postman%27s%20Free%20plan%20after%20the%20March%202026%20one-user%20limit%27%20segment.%0A%0AContent%20angle%3A%20Searchable%3A%20a%20%27Postman%20free%20plan%20one%20user%20limit%3A%20what%20small%20teams%20can%20do%27%20guide%20that%20walks%20through%20exporting%20a%20shared%20workspace%20and%20committing%20it%20as%20a%20Bruno%20collection.%0ATarget%20keywords%3A%20postman%20free%20plan%20one%20user%2C%20postman%20free%20team%20alternative%2C%20share%20postman%20collection%20without%20paid%20plan%0AProof%20points%3A%20Postman%27s%20own%20docs%3A%20the%20Free%20plan%20is%20limited%20to%20one%20user%20and%20can%27t%20create%20a%20team%3B%20Bruno%27s%20pricing%20FAQ%3A%20no%20account%20or%20login%2C%20collaboration%20through%20any%20Git%20provider%0ASuggested%20channels%3A%20SEO/blog%20migration%20guide%2C%20Bruno%20docs%3A%20Postman%20import%20page%2C%20Reply-when-relevant%20in%20r/webdev%20and%20r/QualityAssurance%20threads%20about%20the%20change%0A%0AWrite%20a%20working%20draft%20%28title%2C%20meta%20description%2C%20section%20outline%29%20I%20can%20review%20before%20publishing.">Open in Claude Code ↗</a><button type="button" class="prompt-btn copy-btn">Copy</button></div></div><div class="keywords"><span>Target keywords</span><div class="chip-row"><span class="chip">postman free plan one user</span><span class="chip">postman free team alternative</span><span class="chip">share postman collection without paid plan</span></div></div><div class="proof-points"><span>Proof points</span><ul><li>Postman&#x27;s own docs: the Free plan is limited to one user and can&#x27;t create a team</li><li>Bruno&#x27;s pricing FAQ: no account or login, collaboration through any Git provider</li></ul></div>
         <div class="evidence">
-          <div><span>Evidence</span><p>The thread has 200+ comments across its latest refresh (4 days old); at least 12 distinct users describe the buy-forget-rebuy cycle and several ask for app recommendations.</p></div>
+          <div><span>Evidence</span><p>With the new plans, the Free plan is limited to one user and can’t create a team.</p></div>
           <div>
             <span>Source</span>
-            <p>Forum · 2026-07-10</p>
-            <a href="https://reddit.com/r/MealPrepSunday/comments/example5" target="_blank" rel="noreferrer">Weekly Meal Prep Problems Megathread ↗</a>
+            <p>Company page · 2026-03</p>
+            <a href="https://learning.postman.com/docs/billing/about-plans/" target="_blank" rel="noreferrer">About plans | Postman Docs ↗</a>
           </div>
         </div>
-        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div></div>
+        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div></div>
+      </details>
+    </article>
+    <article id="segment-2" class="card card-segment reveal" data-stage="warm" data-score="87">
+      
+      <header class="card-head">
+        <div class="rank">02</div>
+        <div class="identity">
+          <span class="eyebrow">Segment</span>
+          <h3>Insomnia users blocked by forced cloud login</h3>
+          <div class="badges">
+            <span class="stage warm">Problem aware</span>
+            <span class="badge competitor">Uses Insomnia (Kong)</span>
+            <span class="badge verify verified" data-verified-at="2026-11-05" title="">Verified</span>
+            
+          </div>
+        </div>
+        <div class="score" style="--score:87" aria-label="Fit score 87 out of 100">
+          <strong>87</strong><small>/100</small>
+        </div>
+        <button type="button" class="link-btn" data-anchor="segment-2" title="Copy link to this card" aria-label="Copy link to this card">↗</button>
+      </header>
+      <p class="glance">Teams report being unable to test against their own local servers because Insomnia required a login to reach saved requests.</p>
+      
+      <details class="brief">
+        <summary>Full brief</summary>
+        <div class="info-grid"><div><span>Why it fits</span><p>Bruno has no account or login and keeps collections on disk, which removes the failure described: saved work behind a login server.</p></div><div><span>Why now</span><p>The discussion lists eight linked issues about forced login for local-only content; the pattern recurs across Insomnia 8.x releases rather than being one outage.</p></div><div><span>Channels</span><ul><li>SEO/blog migration guide</li><li>Bruno docs: Insomnia import page</li></ul></div><div><span>Caution</span><p>Signal dated May 2024; Kong may have changed login behaviour since. Do not comment on Kong&#x27;s tracker to promote Bruno.</p></div></div>
+        <blockquote class="content-angle"><span>Content angle</span>Shareable: an &#x27;Insomnia to Bruno in ten minutes&#x27; page that leads with &#x27;your requests never sit behind a login server&#x27;, plus an importer walkthrough.</blockquote><div class="prompt-block"><pre class="prompt-text">Draft an SEO-ready page targeting the &#x27;Insomnia users blocked by forced cloud login&#x27; segment.
+
+Content angle: Shareable: an &#x27;Insomnia to Bruno in ten minutes&#x27; page that leads with &#x27;your requests never sit behind a login server&#x27;, plus an importer walkthrough.
+Target keywords: insomnia forced login, insomnia without account, insomnia alternative offline
+Proof points: Kong/insomnia discussion #7362 links eight issues on forced login for local-only content; Bruno pricing FAQ: there&#x27;s no concept of an account or a login
+Suggested channels: SEO/blog migration guide, Bruno docs: Insomnia import page
+
+Write a working draft (title, meta description, section outline) I can review before publishing.</pre><div class="prompt-actions"><a class="prompt-btn open-btn" href="claude-cli://open?q=Draft%20an%20SEO-ready%20page%20targeting%20the%20%27Insomnia%20users%20blocked%20by%20forced%20cloud%20login%27%20segment.%0A%0AContent%20angle%3A%20Shareable%3A%20an%20%27Insomnia%20to%20Bruno%20in%20ten%20minutes%27%20page%20that%20leads%20with%20%27your%20requests%20never%20sit%20behind%20a%20login%20server%27%2C%20plus%20an%20importer%20walkthrough.%0ATarget%20keywords%3A%20insomnia%20forced%20login%2C%20insomnia%20without%20account%2C%20insomnia%20alternative%20offline%0AProof%20points%3A%20Kong/insomnia%20discussion%20%237362%20links%20eight%20issues%20on%20forced%20login%20for%20local-only%20content%3B%20Bruno%20pricing%20FAQ%3A%20there%27s%20no%20concept%20of%20an%20account%20or%20a%20login%0ASuggested%20channels%3A%20SEO/blog%20migration%20guide%2C%20Bruno%20docs%3A%20Insomnia%20import%20page%0A%0AWrite%20a%20working%20draft%20%28title%2C%20meta%20description%2C%20section%20outline%29%20I%20can%20review%20before%20publishing.">Open in Claude Code ↗</a><button type="button" class="prompt-btn copy-btn">Copy</button></div></div><div class="keywords"><span>Target keywords</span><div class="chip-row"><span class="chip">insomnia forced login</span><span class="chip">insomnia without account</span><span class="chip">insomnia alternative offline</span></div></div><div class="proof-points"><span>Proof points</span><ul><li>Kong/insomnia discussion #7362 links eight issues on forced login for local-only content</li><li>Bruno pricing FAQ: there&#x27;s no concept of an account or a login</li></ul></div>
+        <div class="evidence">
+          <div><span>Evidence</span><p>Currently our team is sitting here unable to use Insomnia to test our APIs that hit against our own local servers. Why? Because we need to login, for no reason.</p></div>
+          <div>
+            <span>Source</span>
+            <p>GitHub issue · 2024-05-02</p>
+            <a href="https://github.com/Kong/insomnia/discussions/7362" target="_blank" rel="noreferrer">Remove Forced Login to Access APIs to Unrelated Server · Kong/insomnia · Discussion #7362 ↗</a>
+          </div>
+        </div>
+        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div></div>
+      </details>
+    </article>
+    <article id="segment-3" class="card card-segment reveal" data-stage="warm" data-score="81">
+      
+      <header class="card-head">
+        <div class="rank">03</div>
+        <div class="identity">
+          <span class="eyebrow">Segment</span>
+          <h3>Developers whose company blocks API-client cloud sync</h3>
+          <div class="badges">
+            <span class="stage warm">Problem aware</span>
+            <span class="badge competitor">Uses Postman</span>
+            <span class="badge verify verified" data-verified-at="2026-11-05" title="">Verified</span>
+            
+          </div>
+        </div>
+        <div class="score" style="--score:81" aria-label="Fit score 81 out of 100">
+          <strong>81</strong><small>/100</small>
+        </div>
+        <button type="button" class="link-btn" data-anchor="segment-3" title="Copy link to this card" aria-label="Copy link to this card">↗</button>
+      </header>
+      <p class="glance">Developers at organisations with security policies against cloud sync ask for the full Postman feature set offline.</p>
+      
+      <details class="brief">
+        <summary>Full brief</summary>
+        <div class="info-grid"><div><span>Why it fits</span><p>Bruno is offline-first with no cloud component, so the security objection to syncing collections does not arise.</p></div><div><span>Why now</span><p>The thread has stayed active for years (last activity 2025-07-08 per the page metadata), and Postman has since deprecated the Scratch Pad that was its offline answer.</p></div><div><span>Channels</span><ul><li>SEO/blog security page</li><li>Bruno docs: security and data handling</li></ul></div><div><span>Caution</span><p>The quoted post is from 2022; the thread&#x27;s later activity shows the topic persists but not the poster&#x27;s current situation.</p></div></div>
+        <blockquote class="content-angle"><span>Content angle</span>Searchable: a security-review one-pager (&#x27;what leaves the machine: nothing&#x27;) that a developer can forward to their security team.</blockquote><div class="prompt-block"><pre class="prompt-text">Draft an SEO-ready page targeting the &#x27;Developers whose company blocks API-client cloud sync&#x27; segment.
+
+Content angle: Searchable: a security-review one-pager (&#x27;what leaves the machine: nothing&#x27;) that a developer can forward to their security team.
+Target keywords: postman offline mode, api client no cloud sync, postman blocked by security policy
+Proof points: Postman community thread: &#x27;We cannot use it online for security reasons&#x27;; Bruno pricing FAQ: no cloud component for syncing or storage
+Suggested channels: SEO/blog security page, Bruno docs: security and data handling
+
+Write a working draft (title, meta description, section outline) I can review before publishing.</pre><div class="prompt-actions"><a class="prompt-btn open-btn" href="claude-cli://open?q=Draft%20an%20SEO-ready%20page%20targeting%20the%20%27Developers%20whose%20company%20blocks%20API-client%20cloud%20sync%27%20segment.%0A%0AContent%20angle%3A%20Searchable%3A%20a%20security-review%20one-pager%20%28%27what%20leaves%20the%20machine%3A%20nothing%27%29%20that%20a%20developer%20can%20forward%20to%20their%20security%20team.%0ATarget%20keywords%3A%20postman%20offline%20mode%2C%20api%20client%20no%20cloud%20sync%2C%20postman%20blocked%20by%20security%20policy%0AProof%20points%3A%20Postman%20community%20thread%3A%20%27We%20cannot%20use%20it%20online%20for%20security%20reasons%27%3B%20Bruno%20pricing%20FAQ%3A%20no%20cloud%20component%20for%20syncing%20or%20storage%0ASuggested%20channels%3A%20SEO/blog%20security%20page%2C%20Bruno%20docs%3A%20security%20and%20data%20handling%0A%0AWrite%20a%20working%20draft%20%28title%2C%20meta%20description%2C%20section%20outline%29%20I%20can%20review%20before%20publishing.">Open in Claude Code ↗</a><button type="button" class="prompt-btn copy-btn">Copy</button></div></div><div class="keywords"><span>Target keywords</span><div class="chip-row"><span class="chip">postman offline mode</span><span class="chip">api client no cloud sync</span><span class="chip">postman blocked by security policy</span></div></div><div class="proof-points"><span>Proof points</span><ul><li>Postman community thread: &#x27;We cannot use it online for security reasons&#x27;</li><li>Bruno pricing FAQ: no cloud component for syncing or storage</li></ul></div>
+        <div class="evidence">
+          <div><span>Evidence</span><p>We do not want to use the scratch pad. We want to be able to benefit from the full feature set of Postman while working offline. We cannot use it online for security reasons.</p></div>
+          <div>
+            <span>Source</span>
+            <p>Forum · 2022-02-17</p>
+            <a href="https://community.postman.com/t/working-in-offline-mode/20174?page=5" target="_blank" rel="noreferrer">Using Postman with Z-Scaler - Page 5 - Help Hub - Postman Community ↗</a>
+          </div>
+        </div>
+        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div></div>
+      </details>
+    </article>
+    <article id="segment-4" class="card card-segment reveal" data-stage="warm" data-score="83">
+      
+      <header class="card-head">
+        <div class="rank">04</div>
+        <div class="identity">
+          <span class="eyebrow">Segment</span>
+          <h3>Former Postman Scratch Pad users who worked without an account</h3>
+          <div class="badges">
+            <span class="stage warm">Trigger present</span>
+            <span class="badge competitor">Uses Postman</span>
+            <span class="badge verify verified" data-verified-at="2026-11-05" title="">Verified</span>
+            
+          </div>
+        </div>
+        <div class="score" style="--score:83" aria-label="Fit score 83 out of 100">
+          <strong>83</strong><small>/100</small>
+        </div>
+        <button type="button" class="link-btn" data-anchor="segment-4" title="Copy link to this card" aria-label="Copy link to this card">↗</button>
+      </header>
+      <p class="glance">Postman&#x27;s offline, account-free workspace is deprecated and receives no updates, bug fixes or security updates.</p>
+      
+      <details class="brief">
+        <summary>Full brief</summary>
+        <div class="info-grid"><div><span>Why it fits</span><p>Bruno covers what the Scratch Pad did (local collections, environments, scripts) without an account, and adds Git-based sharing.</p></div><div><span>Why now</span><p>Scratch Pad is gone from Postman v10.18 and later; remaining users are on unpatched versions or the reduced lightweight client.</p></div><div><span>Channels</span><ul><li>SEO/blog comparison page</li><li>Bruno docs: Postman import page</li></ul></div><div><span>Caution</span><p>Overlaps with the cloud-sync segment; the difference is motive (convenience vs policy). Keep one content piece per motive.</p></div></div>
+        <blockquote class="content-angle"><span>Content angle</span>Searchable: &#x27;Postman Scratch Pad replacement&#x27; landing page comparing what the Scratch Pad, Postman&#x27;s lightweight client and Bruno each keep locally.</blockquote><div class="prompt-block"><pre class="prompt-text">Draft an SEO-ready page targeting the &#x27;Former Postman Scratch Pad users who worked without an account&#x27; segment.
+
+Content angle: Searchable: &#x27;Postman Scratch Pad replacement&#x27; landing page comparing what the Scratch Pad, Postman&#x27;s lightweight client and Bruno each keep locally.
+Target keywords: postman scratch pad replacement, postman scratch pad deprecated, postman without login
+Proof points: Postman docs: Scratch Pad is no longer available in Postman v10.18 and later; Bruno pricing FAQ: no account or login
+Suggested channels: SEO/blog comparison page, Bruno docs: Postman import page
+
+Write a working draft (title, meta description, section outline) I can review before publishing.</pre><div class="prompt-actions"><a class="prompt-btn open-btn" href="claude-cli://open?q=Draft%20an%20SEO-ready%20page%20targeting%20the%20%27Former%20Postman%20Scratch%20Pad%20users%20who%20worked%20without%20an%20account%27%20segment.%0A%0AContent%20angle%3A%20Searchable%3A%20%27Postman%20Scratch%20Pad%20replacement%27%20landing%20page%20comparing%20what%20the%20Scratch%20Pad%2C%20Postman%27s%20lightweight%20client%20and%20Bruno%20each%20keep%20locally.%0ATarget%20keywords%3A%20postman%20scratch%20pad%20replacement%2C%20postman%20scratch%20pad%20deprecated%2C%20postman%20without%20login%0AProof%20points%3A%20Postman%20docs%3A%20Scratch%20Pad%20is%20no%20longer%20available%20in%20Postman%20v10.18%20and%20later%3B%20Bruno%20pricing%20FAQ%3A%20no%20account%20or%20login%0ASuggested%20channels%3A%20SEO/blog%20comparison%20page%2C%20Bruno%20docs%3A%20Postman%20import%20page%0A%0AWrite%20a%20working%20draft%20%28title%2C%20meta%20description%2C%20section%20outline%29%20I%20can%20review%20before%20publishing.">Open in Claude Code ↗</a><button type="button" class="prompt-btn copy-btn">Copy</button></div></div><div class="keywords"><span>Target keywords</span><div class="chip-row"><span class="chip">postman scratch pad replacement</span><span class="chip">postman scratch pad deprecated</span><span class="chip">postman without login</span></div></div><div class="proof-points"><span>Proof points</span><ul><li>Postman docs: Scratch Pad is no longer available in Postman v10.18 and later</li><li>Bruno pricing FAQ: no account or login</li></ul></div>
+        <div class="evidence">
+          <div><span>Evidence</span><p>The Scratch Pad is deprecated and no longer supported. The Scratch Pad is being discontinued and won’t receive any updates, bug fixes, or security updates.</p></div>
+          <div>
+            <span>Source</span>
+            <p>Company page · Date unavailable</p>
+            <a href="https://learning.postman.com/docs/getting-started/basics/using-scratch-pad/" target="_blank" rel="noreferrer">Build and send requests offline using the Scratch Pad | Postman Docs ↗</a>
+          </div>
+        </div>
+        <div class="metrics"><div class="metric"><span>Pain strength</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div><div class="metric"><span>Product fit</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div></div>
       </details>
     </article>
         </div>
@@ -647,17 +648,17 @@ Write a working draft (title, meta description, section outline) I can review be
         </header>
         <div class="cards">
           
-    <article id="company-1" class="card card-company reveal" data-stage="warm" data-score="84">
+    <article id="company-1" class="card card-company reveal" data-stage="hot" data-score="84">
       
       <header class="card-head">
         <div class="rank">01</div>
         <div class="identity">
-          <span class="eyebrow">Potential customer account</span>
-          <h3>GreenPlate Co</h3>
+          <span class="eyebrow">Expansion partner</span>
+          <h3>NashTech</h3>
           <div class="badges">
-            <span class="stage warm">Trigger present</span>
+            <span class="stage hot">High intent</span>
             
-            
+            <span class="badge verify verified" data-verified-at="2026-11-05" title="">Verified</span>
             
           </div>
         </div>
@@ -666,31 +667,77 @@ Write a working draft (title, meta description, section outline) I can review be
         </div>
         <button type="button" class="link-btn" data-anchor="company-1" title="Copy link to this card" aria-label="Copy link to this card">↗</button>
       </header>
-      <p class="glance">Hiring a &#x27;Sustainability Operations Lead&#x27; whose job description mentions &#x27;reducing internal food waste across our 3 meal kit locations by 40%&#x27; and &#x27;evaluating inventory intelligence tools.&#x27;</p>
+      <p class="glance">A NashTech project team could not renew its Postman license and the client had strict data-residency rules, so it moved the project to Bruno.</p>
       
       <details class="brief">
         <summary>Full brief</summary>
-        <div class="info-grid"><div><span>Combined value</span><p>Shelfie&#x27;s core intelligence — scan, predict, suggest — could be adapted for GreenPlate&#x27;s multi-location meal kit operation. The 40% reduction target signals real urgency and approved budget.</p></div><div><span>Why now</span><p>They&#x27;re hiring for this role now, which means budget is approved and the problem is prioritized this quarter.</p></div><div><span>Execution path</span><p>Warm BD — the hiring manager for this role is named on the job posting&#x27;s company page, giving a specific, public point of contact rather than a cold inbound.</p></div><div><span>Contact path</span><p>LinkedIn message to the hiring manager listed on the job posting</p></div><div><span>What to propose</span><p>A scoped 30-day pilot at one location, evaluated against the 40% reduction target the role already has a mandate for.</p></div><div><span>Caution</span><p>This is a design-partner opportunity, not an immediate close — B2B sales cycle is longer and they may also be evaluating enterprise-only tools.</p></div></div>
-        <blockquote><span>BD pitch</span>Saw the Sustainability Ops Lead role — the 40% waste reduction target is exactly the outcome our AI pantry intelligence engine (scan, predict spoilage, suggest utilization) is built for. It runs in home kitchens today; the same detection layer could pilot across your 3 locations.</blockquote><div class="copy-row"><span class="copy-src" hidden>Prepare a partnership pitch to GreenPlate Co via LinkedIn message to the hiring manager listed on the job posting.
+        <div class="info-grid"><div><span>Combined value</span><p>A delivery firm already running Bruno on a client project can standardise it across other client engagements with the same data-residency constraints; Bruno gains a reference deployment in services work.</p></div><div><span>Why now</span><p>The write-up was published on 2026-07-29 after two weeks on a real project, so the evaluation is fresh.</p></div><div><span>Execution path</span><p>Warm BD</p></div><div><span>Contact path</span><p>NashTech&#x27;s public &#x27;Get in touch&#x27; page linked from its blog</p></div><div><span>What to propose</span><p>A 30-minute call with the QA practice to scope a multi-project rollout and a case study.</p></div><div><span>Caution</span><p>One project team&#x27;s experience, not a company-wide decision; the blog post is a practitioner write-up.</p></div></div>
+        <blockquote><span>BD pitch</span>Your QA team moved a client project from Postman to Bruno because of licence cost and data-residency rules. Other client projects likely share those constraints. Would a short call on rolling Bruno out as a standard option across engagements, with support terms, be useful?</blockquote><div class="prompt-block"><pre class="prompt-text">Prepare a partnership pitch to NashTech via NashTech&#x27;s public &#x27;Get in touch&#x27; page linked from its blog.
 
-Execution path: Warm BD — the hiring manager for this role is named on the job posting&#x27;s company page, giving a specific, public point of contact rather than a cold inbound.
-Combined value: Shelfie&#x27;s core intelligence — scan, predict, suggest — could be adapted for GreenPlate&#x27;s multi-location meal kit operation. The 40% reduction target signals real urgency and approved budget.
-Why now: They&#x27;re hiring for this role now, which means budget is approved and the problem is prioritized this quarter.
-What to propose: A scoped 30-day pilot at one location, evaluated against the 40% reduction target the role already has a mandate for.
+Execution path: Warm BD
+Combined value: A delivery firm already running Bruno on a client project can standardise it across other client engagements with the same data-residency constraints; Bruno gains a reference deployment in services work.
+Why now: The write-up was published on 2026-07-29 after two weeks on a real project, so the evaluation is fresh.
+What to propose: A 30-minute call with the QA practice to scope a multi-project rollout and a case study.
 
 Draft pitch:
-Saw the Sustainability Ops Lead role — the 40% waste reduction target is exactly the outcome our AI pantry intelligence engine (scan, predict spoilage, suggest utilization) is built for. It runs in home kitchens today; the same detection layer could pilot across your 3 locations.
+Your QA team moved a client project from Postman to Bruno because of licence cost and data-residency rules. Other client projects likely share those constraints. Would a short call on rolling Bruno out as a standard option across engagements, with support terms, be useful?
 
-Refine it, keep it under 90 words, and get it ready for me to review before sending — never send it yourself.</span><button type="button" class="copy-btn cli-btn"><span class="cli-label">Copy prompt for Claude Code</span><code class="cli-uri">claude-cli://run?prompt=Prepare%20a%20partnership%20pitch%20t...</code></button></div>
+Refine it, keep it under 90 words, and get it ready for me to review before sending — never send it yourself.</pre><div class="prompt-actions"><a class="prompt-btn open-btn" href="claude-cli://open?q=Prepare%20a%20partnership%20pitch%20to%20NashTech%20via%20NashTech%27s%20public%20%27Get%20in%20touch%27%20page%20linked%20from%20its%20blog.%0A%0AExecution%20path%3A%20Warm%20BD%0ACombined%20value%3A%20A%20delivery%20firm%20already%20running%20Bruno%20on%20a%20client%20project%20can%20standardise%20it%20across%20other%20client%20engagements%20with%20the%20same%20data-residency%20constraints%3B%20Bruno%20gains%20a%20reference%20deployment%20in%20services%20work.%0AWhy%20now%3A%20The%20write-up%20was%20published%20on%202026-07-29%20after%20two%20weeks%20on%20a%20real%20project%2C%20so%20the%20evaluation%20is%20fresh.%0AWhat%20to%20propose%3A%20A%2030-minute%20call%20with%20the%20QA%20practice%20to%20scope%20a%20multi-project%20rollout%20and%20a%20case%20study.%0A%0ADraft%20pitch%3A%0AYour%20QA%20team%20moved%20a%20client%20project%20from%20Postman%20to%20Bruno%20because%20of%20licence%20cost%20and%20data-residency%20rules.%20Other%20client%20projects%20likely%20share%20those%20constraints.%20Would%20a%20short%20call%20on%20rolling%20Bruno%20out%20as%20a%20standard%20option%20across%20engagements%2C%20with%20support%20terms%2C%20be%20useful%3F%0A%0ARefine%20it%2C%20keep%20it%20under%2090%20words%2C%20and%20get%20it%20ready%20for%20me%20to%20review%20before%20sending%20%E2%80%94%20never%20send%20it%20yourself.">Open in Claude Code ↗</a><button type="button" class="prompt-btn copy-btn">Copy</button></div></div>
         <div class="evidence">
-          <div><span>Evidence</span><p>The job posting on LinkedIn (posted 5 days ago) explicitly describes the problem Shelfie solves at a commercial scale, at a company with an estimated 15-50 employees.</p></div>
+          <div><span>Evidence</span><p>We couldn’t renew the Postman license for this project. There was no budget for enterprise SSO seats. Browser-extension-only usage wasn’t an option either. Our client had strict data-residency rules.</p></div>
           <div>
             <span>Source</span>
-            <p>Job post · 2026-07-09</p>
-            <a href="https://linkedin.com/jobs/example3" target="_blank" rel="noreferrer">Sustainability Operations Lead — GreenPlate Co ↗</a>
+            <p>Company page · 2026-07-29</p>
+            <a href="https://blog.nashtechglobal.com/saying-goodbye-to-postman-why-we-switched-to-bruno/" target="_blank" rel="noreferrer">Saying goodbye to Postman: Why we switched to Bruno - NashTech Blog ↗</a>
           </div>
         </div>
         <div class="metrics"><div class="metric"><span>Strategic fit</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div><div class="metric"><span>Execution ease</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div></div>
+      </details>
+    </article>
+    <article id="company-2" class="card card-company reveal" data-stage="cool" data-score="73">
+      
+      <header class="card-head">
+        <div class="rank">02</div>
+        <div class="identity">
+          <span class="eyebrow">Integration/distribution partner</span>
+          <h3>Consultar.IO</h3>
+          <div class="badges">
+            <span class="stage cool">Potential fit</span>
+            
+            <span class="badge verify verified" data-verified-at="2026-11-05" title="">Verified</span>
+            
+          </div>
+        </div>
+        <div class="score" style="--score:73" aria-label="Fit score 73 out of 100">
+          <strong>73</strong><small>/100</small>
+        </div>
+        <button type="button" class="link-btn" data-anchor="company-2" title="Copy link to this card" aria-label="Copy link to this card">↗</button>
+      </header>
+      <p class="glance">An API provider already publishes its public API collection in Bruno&#x27;s OpenCollection format with a one-click open button.</p>
+      
+      <details class="brief">
+        <summary>Full brief</summary>
+        <div class="info-grid"><div><span>Combined value</span><p>Each API provider shipping a Bruno collection puts Bruno in front of that provider&#x27;s developers; a showcase listing gives the provider extra discovery.</p></div><div><span>Why now</span><p>The collection repo is live and linked from the provider&#x27;s docs (docs.consultar.io/opencollection).</p></div><div><span>Execution path</span><p>Self-serve program</p></div><div><span>Contact path</span><p>Issues on the public consultar-io/opencollection repository</p></div><div><span>What to propose</span><p>Permission to list the collection in a public showcase of provider-maintained Bruno collections.</p></div><div><span>Caution</span><p>Small repository (1 star when fetched); value is as a pattern to replicate with more providers, not as one large account.</p></div></div>
+        <blockquote><span>BD pitch</span>You already publish your APIs as a Bruno OpenCollection with a one-click open button. We&#x27;d like to feature it as a reference collection for Portuguese-language APIs and link back to your docs.</blockquote><div class="prompt-block"><pre class="prompt-text">Prepare a partnership pitch to Consultar.IO via Issues on the public consultar-io/opencollection repository.
+
+Execution path: Self-serve program
+Combined value: Each API provider shipping a Bruno collection puts Bruno in front of that provider&#x27;s developers; a showcase listing gives the provider extra discovery.
+Why now: The collection repo is live and linked from the provider&#x27;s docs (docs.consultar.io/opencollection).
+What to propose: Permission to list the collection in a public showcase of provider-maintained Bruno collections.
+
+Draft pitch:
+You already publish your APIs as a Bruno OpenCollection with a one-click open button. We&#x27;d like to feature it as a reference collection for Portuguese-language APIs and link back to your docs.
+
+Refine it, keep it under 90 words, and get it ready for me to review before sending — never send it yourself.</pre><div class="prompt-actions"><a class="prompt-btn open-btn" href="claude-cli://open?q=Prepare%20a%20partnership%20pitch%20to%20Consultar.IO%20via%20Issues%20on%20the%20public%20consultar-io/opencollection%20repository.%0A%0AExecution%20path%3A%20Self-serve%20program%0ACombined%20value%3A%20Each%20API%20provider%20shipping%20a%20Bruno%20collection%20puts%20Bruno%20in%20front%20of%20that%20provider%27s%20developers%3B%20a%20showcase%20listing%20gives%20the%20provider%20extra%20discovery.%0AWhy%20now%3A%20The%20collection%20repo%20is%20live%20and%20linked%20from%20the%20provider%27s%20docs%20%28docs.consultar.io/opencollection%29.%0AWhat%20to%20propose%3A%20Permission%20to%20list%20the%20collection%20in%20a%20public%20showcase%20of%20provider-maintained%20Bruno%20collections.%0A%0ADraft%20pitch%3A%0AYou%20already%20publish%20your%20APIs%20as%20a%20Bruno%20OpenCollection%20with%20a%20one-click%20open%20button.%20We%27d%20like%20to%20feature%20it%20as%20a%20reference%20collection%20for%20Portuguese-language%20APIs%20and%20link%20back%20to%20your%20docs.%0A%0ARefine%20it%2C%20keep%20it%20under%2090%20words%2C%20and%20get%20it%20ready%20for%20me%20to%20review%20before%20sending%20%E2%80%94%20never%20send%20it%20yourself.">Open in Claude Code ↗</a><button type="button" class="prompt-btn copy-btn">Copy</button></div></div>
+        <div class="evidence">
+          <div><span>Evidence</span><p>Essa é a coleção do Bruno (OpenCollection) para as APIs do Consultar.IO. Clique no botão ou faça o clone do repositório e abra o repositório no Bruno.</p></div>
+          <div>
+            <span>Source</span>
+            <p>Company page · Date unavailable</p>
+            <a href="https://github.com/consultar-io/opencollection" target="_blank" rel="noreferrer">GitHub - consultar-io/opencollection: Coleção OpenCollection para as APIs do Consultar.IO ↗</a>
+          </div>
+        </div>
+        <div class="metrics"><div class="metric"><span>Strategic fit</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div><div class="metric"><span>Timing</span><div class="track"><i style="width:60%"></i></div><b>3/5</b></div><div class="metric"><span>Execution ease</span><div class="track"><i style="width:80%"></i></div><b>4/5</b></div><div class="metric"><span>Evidence quality</span><div class="track"><i style="width:100%"></i></div><b>5/5</b></div></div>
       </details>
     </article>
         </div>
@@ -706,18 +753,18 @@ Refine it, keep it under 90 words, and get it ready for me to review before send
           
     <article class="pattern reveal">
       <span class="pattern-num">01</span>
-      <div><h3>The buy-forget-rebuy cycle</h3><p>The most common pain across individuals and the segment is purchasing ingredients, forgetting they exist, and buying again. Shelfie&#x27;s scan + tracking directly breaks this cycle.</p></div>
-      <strong>4x</strong>
+      <div><h3>Saved work behind a vendor login</h3><p>Insomnia&#x27;s forced login, Postman&#x27;s sync requirement and the Scratch Pad deprecation are the same complaint. Lead with &#x27;collections are files you own&#x27;.</p></div>
+      <strong>3x</strong>
     </article>
     <article class="pattern reveal">
       <span class="pattern-num">02</span>
-      <div><h3>Manual entry is the dealbreaker</h3><p>Every prospect who tried existing tools abandoned them because of manual data entry. Camera-scan is Shelfie&#x27;s strongest differentiator.</p></div>
-      <strong>3x</strong>
+      <div><h3>Security or data-residency rules block cloud sync</h3><p>The NashTech client and the Postman forum thread both cite policy, not preference. A forwardable security page is worth more than a feature list.</p></div>
+      <strong>2x</strong>
     </article>
     <article class="pattern reveal">
       <span class="pattern-num">03</span>
-      <div><h3>Recipe-from-pantry demand</h3><p>Multiple prospects want recipes generated from what they already have, not what they need to buy. This is Shelfie&#x27;s core feature.</p></div>
-      <strong>3x</strong>
+      <div><h3>Paying per seat to share requests</h3><p>Postman&#x27;s one-user Free plan and NashTech&#x27;s unrenewable licence both turn collaboration into a seat cost; Git-based sharing answers it directly.</p></div>
+      <strong>2x</strong>
     </article>
         </div>
       </section>
@@ -733,32 +780,33 @@ Refine it, keep it under 90 words, and get it ready for me to review before send
       <div class="comp-grid">
         <div class="comp-card">
           <span>Top competitors</span>
-          <ul><li>SuperCook</li><li>NoWaste</li><li>Frost</li><li>Pantry Check</li><li>Notion templates</li></ul>
+          <ul><li>Postman</li><li>Insomnia (Kong)</li><li>Hoppscotch</li><li>Apidog</li><li>Requestly</li></ul>
         </div>
         <div class="comp-card">
           <span>Switching barriers</span>
-          <p>Low for individuals (free apps, no data lock-in). Medium for the company account (workflow integration, team adoption).</p>
+          <p>Existing collections, environments and pm.* scripts; Bruno&#x27;s script API (bru/req/res) differs, so test scripts need porting.</p>
         </div>
         <div class="comp-card comp-card--full">
           <span>Where this product wins</span>
-          <p>Camera-scan eliminates manual entry — the #1 reason users abandon competing apps. Recipe engine scores by freshness urgency, not just preference.</p>
+          <p>No account, no cloud: collections live in the team&#x27;s Git repository and are reviewed in pull requests like code.</p>
         </div>
       </div>
+      
     </section>
 
       <section class="plan">
         <div class="plan-head">
           <span class="eyebrow">Seven-day manual plan</span>
-          <h2>Lead with the manual-entry pain point. Show, don&#x27;t tell — demo the camera scan in the first touch.</h2>
+          <h2>Own the &#x27;I lost free team sharing / I can&#x27;t sync to the cloud&#x27; moment with migration content, then turn one services firm and a few API providers into public references.</h2>
         </div>
         <div class="plan-grid">
-          <div><span>First step</span><p>Contact the two highest-scoring individuals with a source-grounded message and a 30-second demo video link; open the GreenPlate Co conversation with the pilot proposal.</p><div class="copy-row"><span class="copy-src" hidden>Execute day 1 of the seven-day plan: Contact the two highest-scoring individuals with a source-grounded message and a 30-second demo video link; open the GreenPlate Co conversation with the pilot proposal.
+          <div><span>First step</span><p>Publish the Postman Free one-user-limit migration guide and contact NashTech through its public contact page.</p><div class="prompt-block"><pre class="prompt-text">Execute day 1 of the seven-day plan: Publish the Postman Free one-user-limit migration guide and contact NashTech through its public contact page.
 
-Success signal to watch for: Three individual conversations, one design-partner pilot conversation, and a published use-case page for the meal-prep segment within seven days.</span><button type="button" class="copy-btn cli-btn"><span class="cli-label">Copy day-1 prompt for Claude Code</span><code class="cli-uri">claude-cli://run?prompt=Execute%20day%201%20of%20the%20seven-...</code></button></div></div>
-          <div><span>Follow-up</span><p>Share a free account for 14 days. No credit card. Ask for honest feedback, not a testimonial.</p></div>
-          <div><span>Success signal</span><p>Three individual conversations, one design-partner pilot conversation, and a published use-case page for the meal-prep segment within seven days.</p></div>
-          <div><span>Research scope</span><p>Public English-language sources, last 90 days</p></div>
-          <div class="plan-channels"><span>Channels to prioritize</span><ol><li>Community reply</li><li>YouTube reply</li><li>Email</li><li>LinkedIn</li><li>SEO/blog</li></ol></div>
+Success signal to watch for: One partner call booked, one provider collection featured, and the migration guide indexed within seven days.</pre><div class="prompt-actions"><a class="prompt-btn open-btn" href="claude-cli://open?q=Execute%20day%201%20of%20the%20seven-day%20plan%3A%20Publish%20the%20Postman%20Free%20one-user-limit%20migration%20guide%20and%20contact%20NashTech%20through%20its%20public%20contact%20page.%0A%0ASuccess%20signal%20to%20watch%20for%3A%20One%20partner%20call%20booked%2C%20one%20provider%20collection%20featured%2C%20and%20the%20migration%20guide%20indexed%20within%20seven%20days.">Open day-1 prompt in Claude Code ↗</a><button type="button" class="prompt-btn copy-btn">Copy</button></div></div></div>
+          <div><span>Follow-up</span><p>Ship the forwardable security one-pager; open an issue on the Consultar.IO collection repo asking to feature it.</p></div>
+          <div><span>Success signal</span><p>One partner call booked, one provider collection featured, and the migration guide indexed within seven days.</p></div>
+          <div><span>Research scope</span><p>Public English and Portuguese web pages: vendor docs, GitHub discussions and repos, a vendor community forum, and a company engineering blog. No social profiles.</p></div>
+          <div class="plan-channels"><span>Channels to prioritize</span><ol><li>SEO/blog</li><li>Bruno docs import pages</li><li>Warm BD via public contact page</li><li>GitHub issues on provider repos</li></ol></div>
         </div>
       </section>
 
@@ -771,34 +819,35 @@ Success signal to watch for: Three individual conversations, one design-partner 
       <div class="audit-grid">
         <div class="audit-card audit-card--full">
           <span>Methodology</span>
-          <p>Searched Reddit, Twitter, Hacker News, and cooking forums for explicit waste-reduction demands, pantry management pain, and recipe-from-ingredients requests. Cross-referenced competitor reviews for switching signals.</p>
+          <p>Read Bruno&#x27;s home and pricing pages, then ran 8 web searches across switching, pain, workaround and timing buckets from the devtools query pack and fetched 10 pages. Every evidence quote was copied from the fetched page text and re-checked by finalize.py.</p>
         </div>
         <div class="audit-card">
-          <span>Queries issued (10)</span>
-          <details><summary>Show queries</summary><ul><li><code>reduce food waste app 2026</code></li><li><code>pantry management tool reddit</code></li><li><code>recipe from what I have reddit</code></li><li><code>too much food going bad</code></li><li><code>meal prep ingredient tracker</code></li><li><code>alternative to SuperCook</code></li><li><code>Pantry Chef vs alternatives</code></li><li><code>food waste anxiety reddit</code></li><li><code>bulk buying then throwing away</code></li><li><code>smart kitchen app recommendation</code></li></ul></details>
+          <span>Queries issued (8)</span>
+          <details><summary>Show queries</summary><ul><li><code>Insomnia 8 requires login account github issue local collections lost</code></li><li><code>Postman Scratch Pad deprecated offline lightweight API client alternative</code></li><li><code>Postman free plan change 2026 single user collaboration team pricing</code></li><li><code>site:news.ycombinator.com Bruno API client git postman alternative</code></li><li><code>&quot;Bruno collection&quot; API documentation download import our API</code></li><li><code>engineering blog &quot;we switched from Postman to Bruno&quot; team collections git</code></li><li><code>&quot;Fetch in Bruno&quot; OR &quot;Open in Bruno&quot; button API docs</code></li><li><code>Postman community forum request on-premise offline no cloud sync security policy company blocked</code></li></ul></details>
         </div>
         <div class="audit-card">
-          <span>Sources consulted (5)</span>
-          <details><summary>Show sources</summary><ul><li><code>https://reddit.com/r/MealPrepSunday/comments/example1</code></li><li><code>https://reddit.com/r/EatCheapAndHealthy/comments/example2</code></li><li><code>https://news.ycombinator.com/item?id=example3</code></li><li><code>https://twitter.com/exampleuser/status/example4</code></li><li><code>https://www.reddit.com/r/ZeroWaste/comments/example5</code></li></ul></details>
+          <span>Sources consulted (10)</span>
+          <details><summary>Show sources</summary><ul><li><code>https://www.usebruno.com/</code></li><li><code>https://www.usebruno.com/pricing</code></li><li><code>https://github.com/Kong/insomnia/discussions/7362</code></li><li><code>https://github.com/Kong/insomnia/issues/7184</code></li><li><code>https://learning.postman.com/docs/getting-started/basics/using-scratch-pad/</code></li><li><code>https://learning.postman.com/docs/billing/about-plans/</code></li><li><code>https://blog.nashtechglobal.com/saying-goodbye-to-postman-why-we-switched-to-bruno/</code></li><li><code>https://github.com/dotkernel/api-documentation/pull/153</code></li><li><code>https://community.postman.com/t/working-in-offline-mode/20174?page=5</code></li><li><code>https://github.com/consultar-io/opencollection</code></li></ul></details>
         </div>
       </div>
     </section>
 
       <section class="limits">
         <h2>Use this shortlist responsibly</h2>
-        <ul><li>These are potential customers, markets, and partners inferred from public signals, not confirmed buyers.</li><li>GreenPlate Co has a longer B2B sales cycle — treat as a design-partner pilot, not an immediate customer.</li><li>Reddit and YouTube outreach must disclose affiliation to avoid backlash.</li><li>The creator (MealPrepWeekly) may have already received recommendations in video comments — check before reaching out.</li><li>Competitor landscape was inferred from public reviews, not proprietary data. Actual market share may differ.</li><li>The Zero Waste Chef blog post is 23 days old — the author may have found a solution since writing it.</li></ul>
+        <ul><li>No-people run: Individuals were not researched; forum and GitHub posters are not named anywhere.</li><li>Inferred ICP size (2-50 people) from the shared-workspace pain; not stated by any source.</li><li>Two segment signals are older (2022 forum post, 2024 GitHub discussion); they show a recurring pattern, not current intent.</li><li>Hacker News search returned no threads, so HN sentiment is not covered.</li><li>Classification call: NashTech is a Company (expansion partner), not an Individual, because the value is the firm&#x27;s client portfolio; the post&#x27;s author is deliberately not named.</li><li>Classification call: the Scratch Pad and cloud-sync segments overlap; kept separate because the motive differs (convenience vs security policy).</li><li>Competitor list comes from search results and the sources cited, not a market-share study.</li><li>Research budget: 8 searches and 10 page fetches by the agent, plus finalize.py&#x27;s own re-fetch of every cited source.</li><li>No-people mode: 0 Individual(s) removed, 0 prospect(s) dropped because their only source is a personal profile or post, 0 person reference(s) redacted from text. This report names no people.</li></ul>
       </section>
     </main>
 
     <footer>
-      <span>Generated by signal-scout</span>
+      <span class="trust-mark"><b>6 of 6</b> claims verified against their live or archived source before this report shipped · every claim discloses its source</span>
+      <span>Generated by signal-scout · public signals only, no scraped contact data, no data brokers</span>
       <span>Outreach is never sent automatically.</span>
     </footer>
   </div>
 
   <script>
-    const CSV_DATA = "\"type\",\"name\",\"stage\",\"score\",\"verification\",\"pain_signal\",\"why_fit\",\"why_now\",\"source_title\",\"source_url\",\"source_type\",\"signal_date\",\"next_action\",\"caution\"\r\n\"individual\",\"MealPrepWeekly\",\"High intent\",\"97\",\"Unverified\",\"Published a YouTube video titled 'I Keep Throwing Away Groceries' describing the exact problem of buying ingredients for meal prep but forgetting what's in the fridge.\",\"Shelfie's scan-and-track feature directly solves the 'buy but forget' loop. The creator already uses manual spreadsheets.\",\"The video was posted 11 days ago and the creator is actively responding to comment suggestions.\",\"I Keep Throwing Away Groceries \u2014 YouTube\",\"https://www.youtube.com/watch?v=example1\",\"Social post\",\"2026-07-03\",\"Saw your video on the grocery waste cycle \u2014 the spreadsheet-to-trash loop is painfully familiar. We built a tool that scans your pantry with your camera and matches recipes to what's actually there. Would a free trial be useful to test against your current system?\",\"Confirm they haven't already found a solution through the comments. Check the thread before reaching out.\"\r\n\"individual\",\"The Frugal Kitchen (Reddit user)\",\"Problem aware\",\"95\",\"Unverified\",\"Posted a detailed thread on r/EatCheapAndHealthy describing spending $200/week on groceries and throwing away roughly $60 worth. Asked 'is there an app that actually helps with this?'\",\"The user is already quantifying the problem and actively seeking a tool. Shelfie's waste prediction and recipe matching address both the tracking and the utilization.\",\"Posted 9 days ago. Still active in the thread responding to suggestions.\",\"Is there an app that actually helps with food waste?\",\"https://reddit.com/r/EatCheapAndHealthy/comments/example2\",\"Forum\",\"2026-07-05\",\"The $60/week waste number is wild \u2014 and unfortunately common. We built Shelfie specifically for this: scan your fridge, get recipes matched to what's actually there before it goes bad. It tracks expiry by sight. Would love your take on whether it fits your workflow.\",\"Reddit users value peer recommendations over brand accounts. Engage genuinely, not commercially.\"\r\n\"individual\",\"Zero Waste Chef (blog)\",\"Problem aware\",\"79\",\"Unverified\",\"Published a blog post 'Why I Deleted Every Food Waste App' critiquing existing tools for requiring manual entry, lacking recipe integration, and not understanding kitchen reality.\",\"Shelfie's camera-scan approach directly addresses the manual-entry complaint. Recipe integration from pantry contents addresses the second major gap.\",\"The post is still generating discussion. The author is responding to comments and hasn't announced finding a solution.\",\"Why I Deleted Every Food Waste App\",\"https://zerowastechef.com/blog/deleted-apps\",\"Company page\",\"2026-06-21\",\"Read your post on deleting food waste apps \u2014 the manual-entry frustration is exactly why we built Shelfie to work by camera scan. No typing, just point your phone at the fridge. The recipe matching uses what's actually there. Would love your honest take on whether it solves the gaps you outlined.\",\"The author is opinionated and public. If they like the product, their endorsement carries weight. If they don't, respect the feedback and don't push.\"\r\n\"segment\",\"Sunday meal-preppers who forget their fridge contents by midweek\",\"Problem aware\",\"77\",\"Unverified\",\"A recurring r/MealPrepSunday megathread where 12+ users independently describe the same cycle: prep ingredients on Sunday, forget what's left by Wednesday, and buy duplicates.\",\"Shelfie's continuous scan plus expiry prediction and recipe matching is the exact solution to the described workflow gap, at the scale of a recurring, monthly-refreshed thread rather than one post.\",\"The megathread format refreshes monthly and remains active \u2014 a durable, recurring channel rather than a one-off signal.\",\"Weekly Meal Prep Problems Megathread\",\"https://reddit.com/r/MealPrepSunday/comments/example5\",\"Forum\",\"2026-07-10\",\"Searchable \u2014 this pattern maps directly to a recurring query shape ('meal prep app that remembers what I have') worth a dedicated use-case landing page and an SEO push, not a one-time reply.\",\"Segment-level evidence, not an individual lead \u2014 engage the community with disclosed affiliation rather than treating this as one contact.\"\r\n\"company\",\"GreenPlate Co\",\"Trigger present\",\"84\",\"Unverified\",\"Hiring a 'Sustainability Operations Lead' whose job description mentions 'reducing internal food waste across our 3 meal kit locations by 40%' and 'evaluating inventory intelligence tools.'\",\"Shelfie's core intelligence \u2014 scan, predict, suggest \u2014 could be adapted for GreenPlate's multi-location meal kit operation. The 40% reduction target signals real urgency and approved budget.\",\"They're hiring for this role now, which means budget is approved and the problem is prioritized this quarter.\",\"Sustainability Operations Lead \u2014 GreenPlate Co\",\"https://linkedin.com/jobs/example3\",\"Job post\",\"2026-07-09\",\"Saw the Sustainability Ops Lead role \u2014 the 40% waste reduction target is exactly the outcome our AI pantry intelligence engine (scan, predict spoilage, suggest utilization) is built for. It runs in home kitchens today; the same detection layer could pilot across your 3 locations.\",\"This is a design-partner opportunity, not an immediate close \u2014 B2B sales cycle is longer and they may also be evaluating enterprise-only tools.\"\r\n";
-    const CSV_FILENAME = "shelfie-prospects.csv";
+    const CSV_DATA = "\"type\",\"name\",\"domain\",\"stage\",\"score\",\"verification\",\"pain_signal\",\"why_fit\",\"why_now\",\"source_title\",\"source_url\",\"source_type\",\"signal_date\",\"next_action\",\"caution\"\r\n\"segment\",\"Small teams on Postman's Free plan after the March 2026 one-user limit\",\"\",\"Trigger present\",\"94\",\"Verified\",\"Postman's March 2026 plan change limits the Free plan to one user, so a team sharing a free workspace now has to buy seats or move.\",\"Bruno collections are plain files in the team's Git repo, so sharing them needs no per-seat workspace; the core app is free and open source.\",\"The change took effect in March 2026; legacy-plan teams move at renewal, so the decision point is still arriving for many of them.\",\"About plans | Postman Docs\",\"https://learning.postman.com/docs/billing/about-plans/\",\"Company page\",\"2026-03\",\"Searchable: a 'Postman free plan one user limit: what small teams can do' guide that walks through exporting a shared workspace and committing it as a Bruno collection.\",\"Postman's statement is about its plan structure, not about churn; how many teams actually leave is unmeasured.\"\r\n\"segment\",\"Insomnia users blocked by forced cloud login\",\"\",\"Problem aware\",\"87\",\"Verified\",\"Teams report being unable to test against their own local servers because Insomnia required a login to reach saved requests.\",\"Bruno has no account or login and keeps collections on disk, which removes the failure described: saved work behind a login server.\",\"The discussion lists eight linked issues about forced login for local-only content; the pattern recurs across Insomnia 8.x releases rather than being one outage.\",\"Remove Forced Login to Access APIs to Unrelated Server \u00b7 Kong/insomnia \u00b7 Discussion #7362\",\"https://github.com/Kong/insomnia/discussions/7362\",\"GitHub issue\",\"2024-05-02\",\"Shareable: an 'Insomnia to Bruno in ten minutes' page that leads with 'your requests never sit behind a login server', plus an importer walkthrough.\",\"Signal dated May 2024; Kong may have changed login behaviour since. Do not comment on Kong's tracker to promote Bruno.\"\r\n\"segment\",\"Developers whose company blocks API-client cloud sync\",\"\",\"Problem aware\",\"81\",\"Verified\",\"Developers at organisations with security policies against cloud sync ask for the full Postman feature set offline.\",\"Bruno is offline-first with no cloud component, so the security objection to syncing collections does not arise.\",\"The thread has stayed active for years (last activity 2025-07-08 per the page metadata), and Postman has since deprecated the Scratch Pad that was its offline answer.\",\"Using Postman with Z-Scaler - Page 5 - Help Hub - Postman Community\",\"https://community.postman.com/t/working-in-offline-mode/20174?page=5\",\"Forum\",\"2022-02-17\",\"Searchable: a security-review one-pager ('what leaves the machine: nothing') that a developer can forward to their security team.\",\"The quoted post is from 2022; the thread's later activity shows the topic persists but not the poster's current situation.\"\r\n\"segment\",\"Former Postman Scratch Pad users who worked without an account\",\"\",\"Trigger present\",\"83\",\"Verified\",\"Postman's offline, account-free workspace is deprecated and receives no updates, bug fixes or security updates.\",\"Bruno covers what the Scratch Pad did (local collections, environments, scripts) without an account, and adds Git-based sharing.\",\"Scratch Pad is gone from Postman v10.18 and later; remaining users are on unpatched versions or the reduced lightweight client.\",\"Build and send requests offline using the Scratch Pad | Postman Docs\",\"https://learning.postman.com/docs/getting-started/basics/using-scratch-pad/\",\"Company page\",\"Date unavailable\",\"Searchable: 'Postman Scratch Pad replacement' landing page comparing what the Scratch Pad, Postman's lightweight client and Bruno each keep locally.\",\"Overlaps with the cloud-sync segment; the difference is motive (convenience vs policy). Keep one content piece per motive.\"\r\n\"company\",\"NashTech\",\"nashtechglobal.com\",\"High intent\",\"84\",\"Verified\",\"A NashTech project team could not renew its Postman license and the client had strict data-residency rules, so it moved the project to Bruno.\",\"A delivery firm already running Bruno on a client project can standardise it across other client engagements with the same data-residency constraints; Bruno gains a reference deployment in services work.\",\"The write-up was published on 2026-07-29 after two weeks on a real project, so the evaluation is fresh.\",\"Saying goodbye to Postman: Why we switched to Bruno - NashTech Blog\",\"https://blog.nashtechglobal.com/saying-goodbye-to-postman-why-we-switched-to-bruno/\",\"Company page\",\"2026-07-29\",\"Your QA team moved a client project from Postman to Bruno because of licence cost and data-residency rules. Other client projects likely share those constraints. Would a short call on rolling Bruno out as a standard option across engagements, with support terms, be useful?\",\"One project team's experience, not a company-wide decision; the blog post is a practitioner write-up.\"\r\n\"company\",\"Consultar.IO\",\"consultar.io\",\"Potential fit\",\"73\",\"Verified\",\"An API provider already publishes its public API collection in Bruno's OpenCollection format with a one-click open button.\",\"Each API provider shipping a Bruno collection puts Bruno in front of that provider's developers; a showcase listing gives the provider extra discovery.\",\"The collection repo is live and linked from the provider's docs (docs.consultar.io/opencollection).\",\"GitHub - consultar-io/opencollection: Cole\u00e7\u00e3o OpenCollection para as APIs do Consultar.IO\",\"https://github.com/consultar-io/opencollection\",\"Company page\",\"Date unavailable\",\"You already publish your APIs as a Bruno OpenCollection with a one-click open button. We'd like to feature it as a reference collection for Portuguese-language APIs and link back to your docs.\",\"Small repository (1 star when fetched); value is as a pattern to replicate with more providers, not as one large account.\"\r\n";
+    const CSV_FILENAME = "bruno-prospects.csv";
 
     document.getElementById('exportCsvBtn').addEventListener('click', (e) => {
       const blob = new Blob([CSV_DATA], { type: 'text/csv;charset=utf-8;' });
@@ -848,7 +897,8 @@ Success signal to watch for: Three individual conversations, one design-partner 
     document.addEventListener('click', (e) => {
       const copyBtn = e.target.closest('.copy-btn');
       if (copyBtn) {
-        const src = copyBtn.previousElementSibling;
+        const block = copyBtn.closest('.prompt-block');
+        const src = block ? block.querySelector('.prompt-text') : copyBtn.previousElementSibling;
         copyText(src.textContent).then((ok) => flashButton(copyBtn, ok ? 'Copied ✓' : 'See prompt'));
         return;
       }
