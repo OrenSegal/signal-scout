@@ -6,6 +6,18 @@ signal-scout is an agent skill that finds early customers for a product. You giv
 
 It runs in Claude Code, Claude Cowork, OpenCode, Codex, and any [agent-skills](https://agentskills.io)-compatible host. It uses **public signals only**: no data brokers, no scraped emails or contact info, no private groups, no protected-trait targeting.
 
+## Try it without an API key
+
+The verification, scoring and report code is plain Python 3.10+ and runs offline against the committed example:
+
+```bash
+git clone https://github.com/OrenSegal/signal-scout.git && cd signal-scout
+python3 skills/signal-scout/scripts/finalize.py examples/finder-report.json --validate-only
+python3 evals/pipeline/run.py -v
+```
+
+The first command checks the example's schema and score arithmetic. The second runs the four fixture cases that CI runs. Both were run from a clean checkout and pass. A full run (research, classification, openers) needs an agent host such as Claude Code; there is no published measurement of how often its shortlists turn into replies, so none is claimed here.
+
 ## Three prospect types
 
 Generic "find me customers" prompts tend to return one flat list where nothing quite fits: an audience with a made-up outreach opener, or a company scored on how reachable it is personally. signal-scout puts every candidate into exactly one of three types, each with its own scoring and next action:
