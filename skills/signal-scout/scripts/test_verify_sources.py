@@ -49,24 +49,31 @@ EVIDENCE = (
 
 
 NO_ARCHIVE = ("", "", "")
+NO_ARCHIVE_PH = ("", "")
 
 
-def run_verify(prospects: dict, wayback: tuple[str, str, str] = NO_ARCHIVE) -> dict:
+def run_verify(
+    prospects: dict,
+    wayback: tuple[str, str, str] = NO_ARCHIVE,
+    archive_ph: tuple[str, str] = NO_ARCHIVE_PH,
+) -> dict:
     """Write `prospects` to a temp file, run main() with --annotate-out, return the annotated JSON.
 
-    Always mocks fetch_wayback (default: no archived copy) so failure-path tests
-    never hit archive.org for real."""
+    Always mocks fetch_wayback and fetch_archive_ph (default: no archived copy
+    for either) so failure-path tests never hit archive.org or archive.ph for
+    real."""
     with tempfile.TemporaryDirectory() as tmp:
         input_path = Path(tmp) / "in.json"
         output_path = Path(tmp) / "out.json"
         input_path.write_text(json.dumps(prospects), encoding="utf-8")
         argv = ["verify_sources.py", str(input_path), "--annotate-out", str(output_path)]
         with mock.patch.object(verify_sources, "fetch_wayback", return_value=wayback):
-            with mock.patch.object(sys, "argv", argv):
-                try:
-                    verify_sources.main()
-                except SystemExit:
-                    pass
+            with mock.patch.object(verify_sources, "fetch_archive_ph", return_value=archive_ph):
+                with mock.patch.object(sys, "argv", argv):
+                    try:
+                        verify_sources.main()
+                    except SystemExit:
+                        pass
         return json.loads(output_path.read_text(encoding="utf-8"))
 
 
@@ -209,6 +216,43 @@ class TestWaybackFallback(unittest.TestCase):
                 wayback=("https://web.archive.org/web/2026/reddit", "20260301", REAL_PAGE),
             )
         self.assertEqual(result["individuals"][0]["verification_tier"], TIER_VERIFIED)
+
+
+class TestArchivePhFallback(unittest.TestCase):
+    """archive.ph is only tried once Wayback (mocked as NO_ARCHIVE by default
+    via run_verify) has already come up empty — these tests never override
+    the `wayback` kwarg, so they also pin that ordering."""
+
+    def _one_prospect(self, url: str = "https://example.com/gone") -> dict:
+        return {"individuals": [{"name": "test", "source_url": url, "evidence": EVIDENCE}]}
+
+    def test_dead_link_rescued_when_wayback_has_nothing(self):
+        with mock.patch.object(verify_sources, "fetch_text", return_value=(404, "")):
+            result = run_verify(
+                self._one_prospect(),
+                archive_ph=("https://archive.ph/newest/https://example.com/gone", REAL_PAGE),
+            )
+        prospect = result["individuals"][0]
+        self.assertEqual(prospect["verification_tier"], TIER_VERIFIED)
+        self.assertIn("archive.ph", prospect["verification_note"])
+
+    def test_dead_link_with_no_archive_anywhere_stays_broken(self):
+        with mock.patch.object(verify_sources, "fetch_text", return_value=(404, "")):
+            result = run_verify(self._one_prospect())
+        self.assertEqual(result["individuals"][0]["verification_tier"], TIER_BROKEN)
+
+    def test_wayback_hit_takes_priority_over_archive_ph(self):
+        """When both have a copy, the Wayback path (with its timestamped
+        citation) wins — archive.ph is a last resort, not a competing source."""
+        with mock.patch.object(verify_sources, "fetch_text", return_value=(404, "")):
+            result = run_verify(
+                self._one_prospect(),
+                wayback=("https://web.archive.org/web/2026/https://example.com/gone", "20260101", REAL_PAGE),
+                archive_ph=("https://archive.ph/newest/https://example.com/gone", REAL_PAGE),
+            )
+        prospect = result["individuals"][0]
+        self.assertIn("Wayback", prospect["verification_note"])
+        self.assertNotIn("archive.ph", prospect["verification_note"])
 
 
 class TestBattlecardVerification(unittest.TestCase):
