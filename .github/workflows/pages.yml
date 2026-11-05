@@ -1,0 +1,41 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build site from the committed example report
+        run: |
+          mkdir _site
+          cp examples/finder-report.html examples/finder-report.json docs/preview.svg _site/
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>signal-scout example reports</title>
+          <style>body{font-family:system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem;line-height:1.5;background:#fff;color:#111}</style></head>
+          <body><h1>signal-scout example reports</h1>
+          <ul><li><a href="finder-report.html">Bruno (usebruno.com), 2026-11-05, --no-people</a>: every source re-fetched by finalize.py (<a href="finder-report.json">JSON</a>)</li></ul>
+          <p><a href="https://github.com/OrenSegal/signal-scout">Source on GitHub</a></p></body></html>
+          HTML
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+      - id: deployment
+        uses: actions/deploy-pages@v4

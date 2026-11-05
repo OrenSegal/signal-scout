@@ -1,219 +1,301 @@
 {
-  "title": "Shelfie",
-  "product": "AI-powered kitchen intelligence that scans your pantry, predicts waste, and suggests recipes from what you already have.",
-  "product_url": "https://shelfie.app",
-  "target_customer": "Health-conscious home cooks who meal prep and buy in bulk",
-  "adjacent_icp": "Budget-conscious families trying to reduce grocery waste",
-  "search_scope": "Public English-language sources, last 90 days",
-  "generated_at": "2026-07-14",
-  "methodology": "Searched Reddit, Twitter, Hacker News, and cooking forums for explicit waste-reduction demands, pantry management pain, and recipe-from-ingredients requests. Cross-referenced competitor reviews for switching signals.",
+  "title": "Bruno",
+  "product": "Bruno: open-source, Git-native, offline API client for REST, GraphQL, gRPC and WebSocket, with paid support tiers for teams.",
+  "product_url": "https://www.usebruno.com/",
+  "target_customer": "Engineering and QA teams of 2-50 who keep API requests in a shared Postman or Insomnia workspace and either lost free collaboration or cannot sync to a vendor cloud.",
+  "adjacent_icp": "API providers who publish a ready-to-run collection for their developers alongside their docs.",
+  "search_scope": "Public English and Portuguese web pages: vendor docs, GitHub discussions and repos, a vendor community forum, and a company engineering blog. No social profiles.",
+  "generated_at": "2026-11-05",
+  "people": false,
+  "methodology": "Read Bruno's home and pricing pages, then ran 8 web searches across switching, pain, workaround and timing buckets from the devtools query pack and fetched 10 pages. Every evidence quote was copied from the fetched page text and re-checked by finalize.py.",
   "search_queries_used": [
-    "reduce food waste app 2026",
-    "pantry management tool reddit",
-    "recipe from what I have reddit",
-    "too much food going bad",
-    "meal prep ingredient tracker",
-    "alternative to SuperCook",
-    "Pantry Chef vs alternatives",
-    "food waste anxiety reddit",
-    "bulk buying then throwing away",
-    "smart kitchen app recommendation"
+    "Insomnia 8 requires login account github issue local collections lost",
+    "Postman Scratch Pad deprecated offline lightweight API client alternative",
+    "Postman free plan change 2026 single user collaboration team pricing",
+    "site:news.ycombinator.com Bruno API client git postman alternative",
+    "\"Bruno collection\" API documentation download import our API",
+    "engineering blog \"we switched from Postman to Bruno\" team collections git",
+    "\"Fetch in Bruno\" OR \"Open in Bruno\" button API docs",
+    "Postman community forum request on-premise offline no cloud sync security policy company blocked"
   ],
   "sources_consulted": [
-    "https://reddit.com/r/MealPrepSunday/comments/example1",
-    "https://reddit.com/r/EatCheapAndHealthy/comments/example2",
-    "https://news.ycombinator.com/item?id=example3",
-    "https://twitter.com/exampleuser/status/example4",
-    "https://www.reddit.com/r/ZeroWaste/comments/example5"
+    "https://www.usebruno.com/",
+    "https://www.usebruno.com/pricing",
+    "https://github.com/Kong/insomnia/discussions/7362",
+    "https://github.com/Kong/insomnia/issues/7184",
+    "https://learning.postman.com/docs/getting-started/basics/using-scratch-pad/",
+    "https://learning.postman.com/docs/billing/about-plans/",
+    "https://blog.nashtechglobal.com/saying-goodbye-to-postman-why-we-switched-to-bruno/",
+    "https://github.com/dotkernel/api-documentation/pull/153",
+    "https://community.postman.com/t/working-in-offline-mode/20174?page=5",
+    "https://github.com/consultar-io/opencollection"
   ],
-  "verdict": "Strong early-demand signals across all three prospect types: individuals actively requesting a tool, a repeated pantry-forgetting pattern worth targeting with content, and one company whose hiring signal points to a design-partner opportunity.",
-  "individuals": [
+  "verdict": "Yes, with clear timing. Postman's March 2026 one-user Free plan and its deprecated Scratch Pad create a dated trigger for small teams, and one IT services firm has already published a switch to Bruno. Segment and partner signals are strong; this no-people run lists no individuals by design.",
+  "segments": [
     {
-      "name": "MealPrepWeekly",
-      "stage": "High intent",
-      "score": 97,
-      "pain_signal": "Published a YouTube video titled 'I Keep Throwing Away Groceries' describing the exact problem of buying ingredients for meal prep but forgetting what's in the fridge.",
-      "evidence": "A 12-minute video with 45K views where the creator walks through their fridge, shows expired items, and asks followers for app recommendations.",
-      "why_fit": "Shelfie's scan-and-track feature directly solves the 'buy but forget' loop. The creator already uses manual spreadsheets.",
-      "why_now": "The video was posted 11 days ago and the creator is actively responding to comment suggestions.",
-      "source_title": "I Keep Throwing Away Groceries — YouTube",
-      "source_url": "https://www.youtube.com/watch?v=example1",
-      "source_type": "Social post",
-      "signal_date": "2026-07-03",
-      "suggested_channel": "Reply to the YouTube comment thread where they ask for app suggestions",
-      "opener": "Saw your video on the grocery waste cycle — the spreadsheet-to-trash loop is painfully familiar. We built a tool that scans your pantry with your camera and matches recipes to what's actually there. Would a free trial be useful to test against your current system?",
-      "follow_up_sequence": [
-        "Quick follow-up — a few people in your comments mentioned apps that track pantry by manually entering items. Ours does it by photo scan, which might fit your workflow better. Happy to walk you through it in 5 minutes.",
-        "Found this — a creator with a similar setup switched to camera-based tracking and cut their waste by 60% in a month. Thought you'd find the comparison interesting: [link]. No pitch, just data."
+      "name": "Small teams on Postman's Free plan after the March 2026 one-user limit",
+      "stage": "Trigger present",
+      "pain_signal": "Postman's March 2026 plan change limits the Free plan to one user, so a team sharing a free workspace now has to buy seats or move.",
+      "evidence": "With the new plans, the Free plan is limited to one user and can\u2019t create a team.",
+      "why_fit": "Bruno collections are plain files in the team's Git repo, so sharing them needs no per-seat workspace; the core app is free and open source.",
+      "why_now": "The change took effect in March 2026; legacy-plan teams move at renewal, so the decision point is still arriving for many of them.",
+      "source_title": "About plans | Postman Docs",
+      "source_url": "https://learning.postman.com/docs/billing/about-plans/",
+      "source_type": "Company page",
+      "signal_date": "2026-03",
+      "content_angle": "Searchable: a 'Postman free plan one user limit: what small teams can do' guide that walks through exporting a shared workspace and committing it as a Bruno collection.",
+      "target_keywords": [
+        "postman free plan one user",
+        "postman free team alternative",
+        "share postman collection without paid plan"
       ],
-      "caution": "Confirm they haven't already found a solution through the comments. Check the thread before reaching out.",
-      "competitor_mentioned": "",
+      "suggested_channels": [
+        "SEO/blog migration guide",
+        "Bruno docs: Postman import page",
+        "Reply-when-relevant in r/webdev and r/QualityAssurance threads about the change"
+      ],
+      "proof_points": [
+        "Postman's own docs: the Free plan is limited to one user and can't create a team",
+        "Bruno's pricing FAQ: no account or login, collaboration through any Git provider"
+      ],
+      "caution": "Postman's statement is about its plan structure, not about churn; how many teams actually leave is unmeasured.",
+      "competitor_mentioned": "Postman",
+      "dimensions": {
+        "pain_strength": 4,
+        "product_fit": 5,
+        "timing": 5,
+        "evidence_quality": 5
+      },
+      "score": 94,
+      "verification_tier": "verified",
+      "verification_note": "",
+      "verified_at": "2026-11-05"
+    },
+    {
+      "name": "Insomnia users blocked by forced cloud login",
+      "stage": "Problem aware",
+      "pain_signal": "Teams report being unable to test against their own local servers because Insomnia required a login to reach saved requests.",
+      "evidence": "Currently our team is sitting here unable to use Insomnia to test our APIs that hit against our own local servers. Why? Because we need to login, for no reason.",
+      "why_fit": "Bruno has no account or login and keeps collections on disk, which removes the failure described: saved work behind a login server.",
+      "why_now": "The discussion lists eight linked issues about forced login for local-only content; the pattern recurs across Insomnia 8.x releases rather than being one outage.",
+      "source_title": "Remove Forced Login to Access APIs to Unrelated Server \u00b7 Kong/insomnia \u00b7 Discussion #7362",
+      "source_url": "https://github.com/Kong/insomnia/discussions/7362",
+      "source_type": "GitHub issue",
+      "signal_date": "2024-05-02",
+      "content_angle": "Shareable: an 'Insomnia to Bruno in ten minutes' page that leads with 'your requests never sit behind a login server', plus an importer walkthrough.",
+      "target_keywords": [
+        "insomnia forced login",
+        "insomnia without account",
+        "insomnia alternative offline"
+      ],
+      "suggested_channels": [
+        "SEO/blog migration guide",
+        "Bruno docs: Insomnia import page"
+      ],
+      "proof_points": [
+        "Kong/insomnia discussion #7362 links eight issues on forced login for local-only content",
+        "Bruno pricing FAQ: there's no concept of an account or a login"
+      ],
+      "caution": "Signal dated May 2024; Kong may have changed login behaviour since. Do not comment on Kong's tracker to promote Bruno.",
+      "competitor_mentioned": "Insomnia (Kong)",
       "dimensions": {
         "pain_strength": 5,
         "product_fit": 5,
-        "timing": 5,
-        "reachability": 5,
-        "evidence_quality": 4
-      }
-    },
-    {
-      "name": "The Frugal Kitchen (Reddit user)",
-      "stage": "Problem aware",
-      "score": 95,
-      "pain_signal": "Posted a detailed thread on r/EatCheapAndHealthy describing spending $200/week on groceries and throwing away roughly $60 worth. Asked 'is there an app that actually helps with this?'",
-      "evidence": "The post includes a photo of their fridge with expired items and a breakdown of their monthly waste cost. 47 comments, many suggesting apps.",
-      "why_fit": "The user is already quantifying the problem and actively seeking a tool. Shelfie's waste prediction and recipe matching address both the tracking and the utilization.",
-      "why_now": "Posted 9 days ago. Still active in the thread responding to suggestions.",
-      "source_title": "Is there an app that actually helps with food waste?",
-      "source_url": "https://reddit.com/r/EatCheapAndHealthy/comments/example2",
-      "source_type": "Forum",
-      "signal_date": "2026-07-05",
-      "suggested_channel": "Reply in the Reddit thread",
-      "opener": "The $60/week waste number is wild — and unfortunately common. We built Shelfie specifically for this: scan your fridge, get recipes matched to what's actually there before it goes bad. It tracks expiry by sight. Would love your take on whether it fits your workflow.",
-      "follow_up_sequence": [
-        "Saw some people in the thread suggesting spreadsheets — those work until you forget to update them. Shelfie updates by camera scan so the data stays current without manual effort. Happy to set you up with a free account.",
-        "Quick update — we just added a weekly 'use it first' alert that tells you what to cook before anything expires. Thought that maps to exactly what you described. No strings, just try it."
-      ],
-      "caution": "Reddit users value peer recommendations over brand accounts. Engage genuinely, not commercially.",
-      "competitor_mentioned": "Nofridge (mentioned in comments by other users)",
-      "dimensions": {
-        "pain_strength": 5,
-        "product_fit": 4,
-        "timing": 5,
-        "reachability": 5,
-        "evidence_quality": 5
-      }
-    },
-    {
-      "name": "Zero Waste Chef (blog)",
-      "stage": "Problem aware",
-      "score": 79,
-      "pain_signal": "Published a blog post 'Why I Deleted Every Food Waste App' critiquing existing tools for requiring manual entry, lacking recipe integration, and not understanding kitchen reality.",
-      "evidence": "A 2,000-word post that names 4 specific apps and details exactly why each failed their workflow. Published 23 days ago with active comment discussion.",
-      "why_fit": "Shelfie's camera-scan approach directly addresses the manual-entry complaint. Recipe integration from pantry contents addresses the second major gap.",
-      "why_now": "The post is still generating discussion. The author is responding to comments and hasn't announced finding a solution.",
-      "source_title": "Why I Deleted Every Food Waste App",
-      "source_url": "https://zerowastechef.com/blog/deleted-apps",
-      "source_type": "Company page",
-      "signal_date": "2026-06-21",
-      "suggested_channel": "Email via the blog's contact page",
-      "opener": "Read your post on deleting food waste apps — the manual-entry frustration is exactly why we built Shelfie to work by camera scan. No typing, just point your phone at the fridge. The recipe matching uses what's actually there. Would love your honest take on whether it solves the gaps you outlined.",
-      "follow_up_sequence": [
-        "Quick note — we read your critique of the 'smart suggestions' in existing apps. Shelfie's recipe engine scores by ingredient freshness and expiry urgency, not just preference. Different approach entirely. Happy to demo.",
-        "Found this interesting — a food blogger with a similar critique switched to camera-based tracking and wrote about the difference. Thought it'd resonate: [link]."
-      ],
-      "caution": "The author is opinionated and public. If they like the product, their endorsement carries weight. If they don't, respect the feedback and don't push.",
-      "competitor_mentioned": "NoWaste, Frost, Pantry Check, SuperCook (all named in the post)",
-      "dimensions": {
-        "pain_strength": 4,
-        "product_fit": 4,
         "timing": 3,
-        "reachability": 4,
-        "evidence_quality": 5
-      }
-    }
-  ],
-  "segments": [
+        "evidence_quality": 4
+      },
+      "score": 87,
+      "verification_tier": "verified",
+      "verification_note": "",
+      "verified_at": "2026-11-05"
+    },
     {
-      "name": "Sunday meal-preppers who forget their fridge contents by midweek",
+      "name": "Developers whose company blocks API-client cloud sync",
       "stage": "Problem aware",
-      "score": 77,
-      "pain_signal": "A recurring r/MealPrepSunday megathread where 12+ users independently describe the same cycle: prep ingredients on Sunday, forget what's left by Wednesday, and buy duplicates.",
-      "evidence": "The thread has 200+ comments across its latest refresh (4 days old); at least 12 distinct users describe the buy-forget-rebuy cycle and several ask for app recommendations.",
-      "why_fit": "Shelfie's continuous scan plus expiry prediction and recipe matching is the exact solution to the described workflow gap, at the scale of a recurring, monthly-refreshed thread rather than one post.",
-      "why_now": "The megathread format refreshes monthly and remains active — a durable, recurring channel rather than a one-off signal.",
-      "source_title": "Weekly Meal Prep Problems Megathread",
-      "source_url": "https://reddit.com/r/MealPrepSunday/comments/example5",
+      "pain_signal": "Developers at organisations with security policies against cloud sync ask for the full Postman feature set offline.",
+      "evidence": "We do not want to use the scratch pad. We want to be able to benefit from the full feature set of Postman while working offline. We cannot use it online for security reasons.",
+      "why_fit": "Bruno is offline-first with no cloud component, so the security objection to syncing collections does not arise.",
+      "why_now": "The thread has stayed active for years (last activity 2025-07-08 per the page metadata), and Postman has since deprecated the Scratch Pad that was its offline answer.",
+      "source_title": "Using Postman with Z-Scaler - Page 5 - Help Hub - Postman Community",
+      "source_url": "https://community.postman.com/t/working-in-offline-mode/20174?page=5",
       "source_type": "Forum",
-      "signal_date": "2026-07-10",
-      "content_angle": "Searchable — this pattern maps directly to a recurring query shape ('meal prep app that remembers what I have') worth a dedicated use-case landing page and an SEO push, not a one-time reply.",
+      "signal_date": "2022-02-17",
+      "content_angle": "Searchable: a security-review one-pager ('what leaves the machine: nothing') that a developer can forward to their security team.",
       "target_keywords": [
-        "meal prep pantry tracker",
-        "app that remembers what's in my fridge",
-        "meal prep forget ingredients"
+        "postman offline mode",
+        "api client no cloud sync",
+        "postman blocked by security policy"
       ],
       "suggested_channels": [
-        "SEO/blog use-case page targeting the exact query shape",
-        "Recurring, disclosed participation in the r/MealPrepSunday megathread",
-        "ASO copy update highlighting the midweek reminder feature"
+        "SEO/blog security page",
+        "Bruno docs: security and data handling"
       ],
       "proof_points": [
-        "200+ comments in a single thread refresh describing the same buy-forget-rebuy cycle",
-        "At least 12 distinct users explicitly asking for an app recommendation in one thread"
+        "Postman community thread: 'We cannot use it online for security reasons'",
+        "Bruno pricing FAQ: no cloud component for syncing or storage"
       ],
-      "caution": "Segment-level evidence, not an individual lead — engage the community with disclosed affiliation rather than treating this as one contact.",
-      "competitor_mentioned": "Notion templates, Google Sheets (manual workarounds)",
+      "caution": "The quoted post is from 2022; the thread's later activity shows the topic persists but not the poster's current situation.",
+      "competitor_mentioned": "Postman",
       "dimensions": {
         "pain_strength": 4,
-        "product_fit": 4,
+        "product_fit": 5,
+        "timing": 3,
+        "evidence_quality": 4
+      },
+      "score": 81,
+      "verification_tier": "verified",
+      "verification_note": "",
+      "verified_at": "2026-11-05"
+    },
+    {
+      "name": "Former Postman Scratch Pad users who worked without an account",
+      "stage": "Trigger present",
+      "pain_signal": "Postman's offline, account-free workspace is deprecated and receives no updates, bug fixes or security updates.",
+      "evidence": "The Scratch Pad is deprecated and no longer supported. The Scratch Pad is being discontinued and won\u2019t receive any updates, bug fixes, or security updates.",
+      "why_fit": "Bruno covers what the Scratch Pad did (local collections, environments, scripts) without an account, and adds Git-based sharing.",
+      "why_now": "Scratch Pad is gone from Postman v10.18 and later; remaining users are on unpatched versions or the reduced lightweight client.",
+      "source_title": "Build and send requests offline using the Scratch Pad | Postman Docs",
+      "source_url": "https://learning.postman.com/docs/getting-started/basics/using-scratch-pad/",
+      "source_type": "Company page",
+      "signal_date": "Date unavailable",
+      "content_angle": "Searchable: 'Postman Scratch Pad replacement' landing page comparing what the Scratch Pad, Postman's lightweight client and Bruno each keep locally.",
+      "target_keywords": [
+        "postman scratch pad replacement",
+        "postman scratch pad deprecated",
+        "postman without login"
+      ],
+      "suggested_channels": [
+        "SEO/blog comparison page",
+        "Bruno docs: Postman import page"
+      ],
+      "proof_points": [
+        "Postman docs: Scratch Pad is no longer available in Postman v10.18 and later",
+        "Bruno pricing FAQ: no account or login"
+      ],
+      "caution": "Overlaps with the cloud-sync segment; the difference is motive (convenience vs policy). Keep one content piece per motive.",
+      "competitor_mentioned": "Postman",
+      "dimensions": {
+        "pain_strength": 3,
+        "product_fit": 5,
         "timing": 4,
-        "evidence_quality": 3
-      }
+        "evidence_quality": 5
+      },
+      "score": 83,
+      "verification_tier": "verified",
+      "verification_note": "",
+      "verified_at": "2026-11-05"
     }
   ],
   "companies": [
     {
-      "name": "GreenPlate Co",
-      "role": "Potential customer account",
-      "stage": "Trigger present",
-      "score": 84,
-      "pain_signal": "Hiring a 'Sustainability Operations Lead' whose job description mentions 'reducing internal food waste across our 3 meal kit locations by 40%' and 'evaluating inventory intelligence tools.'",
-      "evidence": "The job posting on LinkedIn (posted 5 days ago) explicitly describes the problem Shelfie solves at a commercial scale, at a company with an estimated 15-50 employees.",
-      "why_fit": "Shelfie's core intelligence — scan, predict, suggest — could be adapted for GreenPlate's multi-location meal kit operation. The 40% reduction target signals real urgency and approved budget.",
-      "why_now": "They're hiring for this role now, which means budget is approved and the problem is prioritized this quarter.",
-      "source_title": "Sustainability Operations Lead — GreenPlate Co",
-      "source_url": "https://linkedin.com/jobs/example3",
-      "source_type": "Job post",
-      "signal_date": "2026-07-09",
-      "execution_path": "Warm BD — the hiring manager for this role is named on the job posting's company page, giving a specific, public point of contact rather than a cold inbound.",
-      "contact_path": "LinkedIn message to the hiring manager listed on the job posting",
-      "bd_angle": "Saw the Sustainability Ops Lead role — the 40% waste reduction target is exactly the outcome our AI pantry intelligence engine (scan, predict spoilage, suggest utilization) is built for. It runs in home kitchens today; the same detection layer could pilot across your 3 locations.",
-      "what_to_propose": "A scoped 30-day pilot at one location, evaluated against the 40% reduction target the role already has a mandate for.",
-      "caution": "This is a design-partner opportunity, not an immediate close — B2B sales cycle is longer and they may also be evaluating enterprise-only tools.",
+      "name": "NashTech",
+      "role": "Expansion partner",
+      "stage": "High intent",
+      "pain_signal": "A NashTech project team could not renew its Postman license and the client had strict data-residency rules, so it moved the project to Bruno.",
+      "evidence": "We couldn\u2019t renew the Postman license for this project. There was no budget for enterprise SSO seats. Browser-extension-only usage wasn\u2019t an option either. Our client had strict data-residency rules.",
+      "why_fit": "A delivery firm already running Bruno on a client project can standardise it across other client engagements with the same data-residency constraints; Bruno gains a reference deployment in services work.",
+      "why_now": "The write-up was published on 2026-07-29 after two weeks on a real project, so the evaluation is fresh.",
+      "source_title": "Saying goodbye to Postman: Why we switched to Bruno - NashTech Blog",
+      "source_url": "https://blog.nashtechglobal.com/saying-goodbye-to-postman-why-we-switched-to-bruno/",
+      "source_type": "Company page",
+      "signal_date": "2026-07-29",
+      "execution_path": "Warm BD",
+      "contact_path": "NashTech's public 'Get in touch' page linked from its blog",
+      "bd_angle": "Your QA team moved a client project from Postman to Bruno because of licence cost and data-residency rules. Other client projects likely share those constraints. Would a short call on rolling Bruno out as a standard option across engagements, with support terms, be useful?",
+      "what_to_propose": "A 30-minute call with the QA practice to scope a multi-project rollout and a case study.",
+      "caution": "One project team's experience, not a company-wide decision; the blog post is a practitioner write-up.",
+      "domain": "nashtechglobal.com",
       "dimensions": {
         "strategic_fit": 4,
         "timing": 5,
         "execution_ease": 3,
         "evidence_quality": 5
-      }
+      },
+      "score": 84,
+      "verification_tier": "verified",
+      "verification_note": "",
+      "verified_at": "2026-11-05"
+    },
+    {
+      "name": "Consultar.IO",
+      "role": "Integration/distribution partner",
+      "stage": "Potential fit",
+      "pain_signal": "An API provider already publishes its public API collection in Bruno's OpenCollection format with a one-click open button.",
+      "evidence": "Essa \u00e9 a cole\u00e7\u00e3o do Bruno (OpenCollection) para as APIs do Consultar.IO. Clique no bot\u00e3o ou fa\u00e7a o clone do reposit\u00f3rio e abra o reposit\u00f3rio no Bruno.",
+      "why_fit": "Each API provider shipping a Bruno collection puts Bruno in front of that provider's developers; a showcase listing gives the provider extra discovery.",
+      "why_now": "The collection repo is live and linked from the provider's docs (docs.consultar.io/opencollection).",
+      "source_title": "GitHub - consultar-io/opencollection: Cole\u00e7\u00e3o OpenCollection para as APIs do Consultar.IO",
+      "source_url": "https://github.com/consultar-io/opencollection",
+      "source_type": "Company page",
+      "signal_date": "Date unavailable",
+      "execution_path": "Self-serve program",
+      "contact_path": "Issues on the public consultar-io/opencollection repository",
+      "bd_angle": "You already publish your APIs as a Bruno OpenCollection with a one-click open button. We'd like to feature it as a reference collection for Portuguese-language APIs and link back to your docs.",
+      "what_to_propose": "Permission to list the collection in a public showcase of provider-maintained Bruno collections.",
+      "caution": "Small repository (1 star when fetched); value is as a pattern to replicate with more providers, not as one large account.",
+      "domain": "consultar.io",
+      "dimensions": {
+        "strategic_fit": 3,
+        "timing": 3,
+        "execution_ease": 4,
+        "evidence_quality": 5
+      },
+      "score": 73,
+      "verification_tier": "verified",
+      "verification_note": "",
+      "verified_at": "2026-11-05"
     }
   ],
   "patterns": [
     {
-      "title": "The buy-forget-rebuy cycle",
-      "count": 4,
-      "insight": "The most common pain across individuals and the segment is purchasing ingredients, forgetting they exist, and buying again. Shelfie's scan + tracking directly breaks this cycle."
+      "title": "Saved work behind a vendor login",
+      "count": 3,
+      "insight": "Insomnia's forced login, Postman's sync requirement and the Scratch Pad deprecation are the same complaint. Lead with 'collections are files you own'."
     },
     {
-      "title": "Manual entry is the dealbreaker",
-      "count": 3,
-      "insight": "Every prospect who tried existing tools abandoned them because of manual data entry. Camera-scan is Shelfie's strongest differentiator."
+      "title": "Security or data-residency rules block cloud sync",
+      "count": 2,
+      "insight": "The NashTech client and the Postman forum thread both cite policy, not preference. A forwardable security page is worth more than a feature list."
     },
     {
-      "title": "Recipe-from-pantry demand",
-      "count": 3,
-      "insight": "Multiple prospects want recipes generated from what they already have, not what they need to buy. This is Shelfie's core feature."
+      "title": "Paying per seat to share requests",
+      "count": 2,
+      "insight": "Postman's one-user Free plan and NashTech's unrenewable licence both turn collaboration into a seat cost; Git-based sharing answers it directly."
     }
   ],
   "competitive_context": {
-    "top_competitors": ["SuperCook", "NoWaste", "Frost", "Pantry Check", "Notion templates"],
-    "switching_barriers": "Low for individuals (free apps, no data lock-in). Medium for the company account (workflow integration, team adoption).",
-    "differentiation_angle": "Camera-scan eliminates manual entry — the #1 reason users abandon competing apps. Recipe engine scores by freshness urgency, not just preference."
+    "top_competitors": [
+      "Postman",
+      "Insomnia (Kong)",
+      "Hoppscotch",
+      "Apidog",
+      "Requestly"
+    ],
+    "switching_barriers": "Existing collections, environments and pm.* scripts; Bruno's script API (bru/req/res) differs, so test scripts need porting.",
+    "differentiation_angle": "No account, no cloud: collections live in the team's Git repository and are reviewed in pull requests like code."
   },
   "outreach_plan": {
-    "angle": "Lead with the manual-entry pain point. Show, don't tell — demo the camera scan in the first touch.",
-    "first_step": "Contact the two highest-scoring individuals with a source-grounded message and a 30-second demo video link; open the GreenPlate Co conversation with the pilot proposal.",
-    "follow_up": "Share a free account for 14 days. No credit card. Ask for honest feedback, not a testimonial.",
-    "success": "Three individual conversations, one design-partner pilot conversation, and a published use-case page for the meal-prep segment within seven days.",
-    "channels_to_prioritize": ["Community reply", "YouTube reply", "Email", "LinkedIn", "SEO/blog"],
-    "personalization_notes": "Reference the specific pain each prospect described. Mirror their communication style — casual for Reddit, professional for LinkedIn, conversational for blog creators."
+    "angle": "Own the 'I lost free team sharing / I can't sync to the cloud' moment with migration content, then turn one services firm and a few API providers into public references.",
+    "first_step": "Publish the Postman Free one-user-limit migration guide and contact NashTech through its public contact page.",
+    "follow_up": "Ship the forwardable security one-pager; open an issue on the Consultar.IO collection repo asking to feature it.",
+    "success": "One partner call booked, one provider collection featured, and the migration guide indexed within seven days.",
+    "channels_to_prioritize": [
+      "SEO/blog",
+      "Bruno docs import pages",
+      "Warm BD via public contact page",
+      "GitHub issues on provider repos"
+    ],
+    "personalization_notes": "Quote each source's own constraint back (licence renewal, data residency, forced login). Never name the people who posted in the threads."
   },
   "limits": [
-    "These are potential customers, markets, and partners inferred from public signals, not confirmed buyers.",
-    "GreenPlate Co has a longer B2B sales cycle — treat as a design-partner pilot, not an immediate customer.",
-    "Reddit and YouTube outreach must disclose affiliation to avoid backlash.",
-    "The creator (MealPrepWeekly) may have already received recommendations in video comments — check before reaching out.",
-    "Competitor landscape was inferred from public reviews, not proprietary data. Actual market share may differ.",
-    "The Zero Waste Chef blog post is 23 days old — the author may have found a solution since writing it."
+    "No-people run: Individuals were not researched; forum and GitHub posters are not named anywhere.",
+    "Inferred ICP size (2-50 people) from the shared-workspace pain; not stated by any source.",
+    "Two segment signals are older (2022 forum post, 2024 GitHub discussion); they show a recurring pattern, not current intent.",
+    "Hacker News search returned no threads, so HN sentiment is not covered.",
+    "Classification call: NashTech is a Company (expansion partner), not an Individual, because the value is the firm's client portfolio; the post's author is deliberately not named.",
+    "Classification call: the Scratch Pad and cloud-sync segments overlap; kept separate because the motive differs (convenience vs security policy).",
+    "Competitor list comes from search results and the sources cited, not a market-share study.",
+    "Research budget: 8 searches and 10 page fetches by the agent, plus finalize.py's own re-fetch of every cited source.",
+    "No-people mode: 0 Individual(s) removed, 0 prospect(s) dropped because their only source is a personal profile or post, 0 person reference(s) redacted from text. This report names no people."
   ]
 }
