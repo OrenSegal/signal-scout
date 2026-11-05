@@ -1,0 +1,7 @@
+target-version = "py310"
+line-length = 140
+
+[lint]
+select = ["E", "F", "W", "I", "B"]
+# E501: 48 existing long lines; not reflowed in this change.
+ignore = ["E501"]

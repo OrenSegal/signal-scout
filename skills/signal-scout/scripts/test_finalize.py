@@ -79,7 +79,7 @@ class CsvTests(unittest.TestCase):
             with out.open(newline="", encoding="utf-8") as handle:
                 rows = list(csv.reader(handle))
         self.assertEqual(rows[0], list(CSV_COLUMNS))
-        row = dict(zip(rows[0], rows[1]))
+        row = dict(zip(rows[0], rows[1], strict=True))
         self.assertEqual(row["type"], "individual")
         self.assertEqual(row["verification"], "Verified")
         self.assertEqual(row["next_action"], "hi")

@@ -1,23 +1,26 @@
-# signal-scout MCP server (v0 — B2A distribution)
+# signal-scout MCP server (v0 — agent-to-agent interface)
 
 Wraps signal-scout as a callable tool for *other agents*, not just for a human
 running Claude Code. Any MCP client — another agent, a sales-ops bot, a
 workflow orchestrator — can call it and get back a scored, verified report,
 machine-to-machine.
 
-This is a v0 scaffold: the research loop, classification, source
-verification, and report generation are real and tested (see below).
+This is a v0 scaffold. The research loop and classification are
+implemented but untested; source verification, the no-people filter, and
+report generation are the shared scripts covered by the skill's tests
+(see "What's tested vs. not" below).
 
-**This code is free and self-hostable, permanently.** Every call is metered
-locally to `usage.jsonl`, so real per-call cost is visible to whoever runs it.
+**This code is free and self-hostable, permanently.** Every call is metered locally to
+`usage.jsonl` (tokens and an estimated USD cost), so per-call cost is
+visible to whoever runs it.
 
 ## Two tools, split by what actually adds value
 
 A capable calling agent — Claude Code very much included — already has
-`web_search`/`web_fetch` and can reason well on its own. Paying this server
-to redo that work isn't a real value-add, it's just marked-up compute. So
-there are two tools, and which one is worth calling depends on what the
-caller already has:
+`web_search`/`web_fetch` and can reason well on its own. Having this server
+redo that research spends a second set of search and model tokens for the
+same findings. So there are two tools, and which one is worth calling
+depends on what the caller already has:
 
 - **`classify_and_score(product_url, findings, ...)`** — the default. Takes
   findings the caller already gathered with its own web tools and adds only
@@ -42,7 +45,7 @@ only source is a personal profile or a post under a personal account is
 dropped. `focus="individuals"` is refused unless `people=True`.
 
 Each call is metered before verification runs. Verification has a timeout sized to depth (180s, 360s, 720s); if it runs out, the tool still returns a report but sets `verification_timed_out: true` and says the report is unverified. Pass
-`people=True` only for a private, client-gated run, never for a server that
+`people=True` only for a private, access-controlled run, never for a server that
 other people's agents can reach. Details and limits: [COMPLIANCE.md](../COMPLIANCE.md).
 
 ## What it does
@@ -93,18 +96,18 @@ validation, usage metering) has not been exercised, with a mock or otherwise.
 schema are written to the documented API shape, but structured outputs
 combined with a long server-tool research loop hasn't been verified against
 the real API. **Run one real call and inspect the output before relying on
-this for anything paid.** If the schema needs adjusting (e.g. a field the
+this for anything that matters.** If the schema needs adjusting (e.g. a field the
 model can't populate under strict mode), `schema.py` is the only file that
 should need edits.
 
 ## What's still missing before this reaches other people's agents
 
-- **No payment gate.** `SIGNAL_SCOUT_DAILY_CALL_CAP` is a budget backstop, not
-  billing infrastructure — raise it deliberately if you intend to allow more
-  calls.
+- **No per-caller cost control.** `SIGNAL_SCOUT_DAILY_CALL_CAP` (default 20)
+  is a global spend backstop, not per-caller auth or quotas — raise it
+  deliberately if you intend to allow more calls.
 - **Hosting.** This runs over stdio locally. To be callable by *other
   people's* agents (not just your own), it needs to run somewhere reachable
   — a small always-on host, or Anthropic's Managed Agents / MCP hosting.
-- **A public listing.** An MCP server nobody can find gets no B2A traffic.
-  Once hosted, list it in an MCP registry/marketplace so other agents can
-  discover it.
+- **A public listing.** Other agents can only call a server they can
+  discover. Once hosted, list it in an MCP registry so other agents can
+  find it.
