@@ -32,7 +32,7 @@ Five decisions that shape the code. Where the reasoning at the time was not writ
 
 **Decision.** No pip installs for the skill's scripts. The MCP server is the exception and has its own `requirements.txt`.
 
-**Alternatives considered.** `requests`/`httpx` for fetching, `jinja2` for the report. Not recorded in detail; the cost of an install step on every host is the reason given in `AGENTS.md`.
+**Alternatives considered.** `requests`/`httpx` for fetching, `jinja2` for the report. Not recorded in detail. `AGENTS.md` states the rule ("Scripts are Python 3.10+ stdlib only — no new dependencies") but not the reason for it; the reason is not recorded.
 
 **Consequences.** `safe_fetch.py` reimplements redirect and address checks on `urllib`, and `generate_report.py` builds HTML with f-strings in one file of about 1,550 lines (decision 5).
 
@@ -52,11 +52,11 @@ Five decisions that shape the code. Where the reasoning at the time was not writ
 
 ## 5. `generate_report.py` stays one file
 
-**Context.** At about 1,550 lines it is the largest file in the repo. An external review flagged it.
+**Context.** At about 1,550 lines it is the largest file in the repo.
 
 **Decision.** Keep it as one file for now. It is a single f-string template plus its CSS and JS, and the HTML it writes is self-contained by design (one file a user can email or open offline).
 
-**Alternatives considered.** Splitting into data, CSS and render modules (estimated about 3 hours). Deferred: tests in `test_generate_report.py` cover its output, and the evals do not depend on its internals. Revisit if the template needs a second report type.
+**Alternatives considered.** Splitting into data, CSS and render modules. Deferred: tests in `test_generate_report.py` cover its output, and the evals do not depend on its internals. Revisit if the template needs a second report type.
 
 **Consequences.** Hard to review in one sitting; CSS and markup changes land in a Python file.
 
