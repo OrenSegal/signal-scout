@@ -4,10 +4,6 @@ node_modules/
 __pycache__/
 *.pyc
 outputs/
-BUSINESS.md
-MONETIZATION.md
-STRIPE_HOSTED_SPEC.md
-backshift/
 venv/
 .venv/
 mcp-server/usage.jsonl
