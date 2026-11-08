@@ -2,13 +2,13 @@
 
 [![CI](https://github.com/OrenSegal/signal-scout/actions/workflows/ci.yml/badge.svg)](https://github.com/OrenSegal/signal-scout/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
 
-signal-scout is an agent skill that finds early customers for a product. You give it a startup URL or a product description. You get back a short, scored shortlist of people, market segments, and companies worth approaching, each backed by a public source that was checked before the report was written.
+signal-scout is an agent skill for founders looking for their first customers. You give it a startup URL or a product description. You get back a short, scored shortlist of people, market segments, and companies worth approaching, each backed by a public source that a script re-fetched and checked before the report was written.
 
-**[Open the example report](https://orensegal.github.io/signal-scout/finder-report.html)**, a real `--no-people` run on Bruno, published by GitHub Pages from [`examples/`](examples/).
+**[Open the example report](https://orensegal.github.io/signal-scout/finder-report.html)**: one real `--no-people` run on one product, Bruno. All 6 prospects it kept (4 segments, 2 companies) passed the source check. That is n = 1 run, not a verification rate. Re-check it offline with `python3 skills/signal-scout/scripts/finalize.py examples/finder-report.json --validate-only`.
 
 [![Summary of the example report (four segments, two companies, each Verified 2026-11-05), drawn from its JSON by docs/render_preview.py](docs/preview.svg)](https://orensegal.github.io/signal-scout/finder-report.html)
 
-It runs in Claude Code, Claude Cowork, OpenCode, Codex, and any [agent-skills](https://agentskills.io)-compatible host. It uses **public signals only**: no data brokers, no scraped emails or contact info, no private groups, no protected-trait targeting.
+`SKILL.md` uses the [agent-skills](https://agentskills.io) format, with install paths below for Claude Code, Codex and OpenCode (Claude Cowork uses skills enabled on the claude.ai account). It uses **public signals only**: no data brokers, no scraped emails or contact info, no private groups, no protected-trait targeting.
 
 ## Try it without an API key
 
@@ -41,7 +41,19 @@ Generic "find me customers" prompts tend to return one flat list where nothing q
 
 For a full worked example, see [`examples/finder-report.json`](examples/finder-report.json) and the rendered [`examples/finder-report.html`](examples/finder-report.html).
 
-**Example status:** this is a real `--no-people` run on [Bruno](https://www.usebruno.com/) (an open-source API client) made on 2026-11-05, and finalize.py re-fetched every cited source and marked all six prospects Verified.
+**Example status:** this is one real `--no-people` run on [Bruno](https://www.usebruno.com/) (an open-source API client) made on 2026-11-05: 8 web searches, 10 fetched pages, 6 prospects kept. `finalize.py` re-fetched every cited source and marked all six Verified. It shows the pipeline working end to end on one product; it is not a measure of how often verification passes. To re-run the live check without writing any files, `python3 skills/signal-scout/scripts/verify_sources.py examples/finder-report.json` (it needs the network, and pages change, so a later run can differ).
+
+```mermaid
+flowchart LR
+  skill["SKILL.md<br/>(agent: search, classify, score)"] --> json["analysis.json"]
+  json --> fin["finalize.py"]
+  fin --> pf["people_filter.py<br/>(--no-people)"]
+  fin --> vs["verify_sources.py"]
+  vs --> sf["safe_fetch.py<br/>(+ Wayback / archive.ph)"]
+  fin --> gr["generate_report.py"]
+  gr --> out["report.html + prospects.csv"]
+  fin --> diff["diff_reports.py<br/>(prior runs)"]
+```
 
 ## Source verification
 
@@ -62,6 +74,17 @@ How this differs from grounding checkers: the ones I looked at (Vectara HHEM, Go
 ## Evals
 
 CI runs [`evals/pipeline/run.py`](evals/pipeline/run.py) on every push. It calls the real validation, scoring and source-verification code on four fixture reports, with saved pages in place of the network, and fails on any change in output. In [#3](https://github.com/OrenSegal/signal-scout/pull/3), three planted bugs (a flipped grounding threshold, a changed score weight, a fabricated prospect left in the handoff) each turned it red. The LLM steps (finding, classifying and rating prospects, writing openers) are not covered; [`evals/README.md`](evals/README.md) explains both checks and what each one misses.
+
+## Limitations
+
+- **One real run.** The committed example is n = 1 product and 6 prospects. There is no measured verification pass rate, false-positive rate, or reply rate.
+- **The check is lexical.** It confirms quoted words and specifics are on the page, not that the claim is true or that the page is current. A wrong number that appears elsewhere on the page passes.
+- **The LLM steps are untested.** CI covers validation, scoring and verification on four author-written fixtures. Finding, classifying and rating prospects and writing openers have no automated check ([`evals/README.md`](evals/README.md)).
+- **The no-people filter is pattern matching**, not entity recognition; a person named only inside a quote can slip through ([COMPLIANCE.md](COMPLIANCE.md)).
+- **The MCP server has never made a live call** and has no tests ([`mcp-server/README.md`](mcp-server/README.md)).
+- **`generate_report.py` is about 1,550 lines** in one file; [`docs/decisions.md`](docs/decisions.md) says why it has not been split.
+
+Design decisions and the alternatives rejected are in [`docs/decisions.md`](docs/decisions.md).
 
 ## Optional features
 
