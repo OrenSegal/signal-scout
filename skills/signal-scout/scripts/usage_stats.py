@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Report repeat-usage patterns across signal-scout runs — local only, no network.
 
-This is a founder-facing analytics tool, not part of the research workflow:
+This is a maintainer-facing check, not part of the research workflow:
 it answers "does anyone actually come back to the same product?" before
-committing to a watch-mode subscription. Reads only the
+building more on watch mode. Reads only the
 outputs/<product-slug>/analysis-<YYYY-MM-DD>.json files the storage
 convention in SKILL.md already produces — no telemetry, nothing leaves the
 machine.
@@ -75,15 +75,15 @@ def main() -> None:
         avg_gap = sum(gaps) / len(gaps)
         print(f"Average gap between repeat runs on the same product: {avg_gap:.1f} days.")
         print(
-            "A watch-mode subscription is worth pricing once this repeat rate and gap are "
+            "Watch mode is worth more work once this repeat rate and gap are "
             "stable across enough products to trust — a single repeat run is a data point, "
             "not a pattern."
         )
     else:
         print(
-            "No repeat runs yet. Don't price a recurring subscription off this alone — "
-            "every run so far has been a one-off check, which is exactly what the free "
-            "one-shot report already serves."
+            "No repeat runs yet. Don't build more on watch mode off this alone — "
+            "every run so far has been a one-off check, which the one-shot report "
+            "already serves."
         )
 
 

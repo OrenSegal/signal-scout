@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>signal-scout example report</title>
+<meta name="description" content="One real --no-people signal-scout run on Bruno: 6 prospects kept, every cited source re-fetched and found on the page.">
+<meta property="og:title" content="signal-scout example report">
+<meta property="og:description" content="One real --no-people run on Bruno: 6 prospects kept, every cited source re-fetched and found on the page.">
+<meta property="og:image" content="https://orensegal.github.io/signal-scout/og.png">
+<meta property="og:url" content="https://orensegal.github.io/signal-scout/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23d9531f'/%3E%3C/svg%3E">
+<style>
+  /* Same tokens and faces as the generated report (generate_report.py), so the two pages read as one site. */
+  :root {
+    --bg: #15130f; --panel: #1e1a14; --ink: #f5efe2; --muted: #b3a68d; --line: rgba(245, 239, 226, .16);
+    --a: #ff7a45; --ok: #6fb0a0;
+    --font-display: "Iowan Old Style", Charter, ui-serif, Georgia, "Times New Roman", serif;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #faf6ee; --panel: #ffffff; --ink: #241d13; --muted: #6d6350; --line: rgba(36, 29, 19, .14); --a: #d9531f; --ok: #2f7d68; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font-ui); -webkit-font-smoothing: antialiased; }
+  main { width: min(760px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 56px; }
+  .eyebrow { color: var(--a); font-size: 13px; font-weight: 700; letter-spacing: .04em; margin: 0; }
+  h1 { font: 600 clamp(34px, 6vw, 52px)/1.05 var(--font-display); letter-spacing: -.025em; margin: 10px 0 16px; }
+  h2 { font: 600 22px/1.2 var(--font-display); margin: 40px 0 10px; }
+  p { margin: 0 0 14px; max-width: 64ch; }
+  .muted { color: var(--muted); }
+  a { color: inherit; text-decoration-color: var(--a); text-underline-offset: 3px; }
+  a:focus-visible { outline: 3px solid var(--ok); outline-offset: 3px; }
+  .report { display: block; margin: 28px 0 0; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); text-decoration: none; }
+  .report:hover { border-color: var(--a); }
+  .report strong { font: 600 21px/1.25 var(--font-display); display: block; margin-bottom: 4px; }
+  .report img { display: block; width: 100%; height: auto; margin-top: 16px; border-radius: 8px; }
+  dl { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 16px 0 0; border-top: 1px solid var(--line); }
+  dl div { padding: 12px 12px 0 0; }
+  dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  dd { margin: 2px 0 0; font: 600 24px/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
+  pre { margin: 0 0 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow-x: auto; font: 13px/1.6 var(--font-mono); }
+  footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; }
+  .nowrap { white-space: nowrap; }
+  /* The 760px preview is unreadable at phone width; the numbers above carry the same facts. */
+  @media (max-width: 560px) { dl { grid-template-columns: repeat(2, 1fr); } .report img { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">signal-scout · example output</p>
+  <h1>A first-customer shortlist where every source was re-read</h1>
+  <p>signal-scout is an agent skill: give it a product URL and it returns scored market segments, companies and (in private runs) people worth approaching. Before the report is written, <code>finalize.py</code> fetches every cited page and drops any prospect whose quoted evidence is not on it.</p>
+
+  <a class="report" href="finder-report.html">
+    <strong>Bruno (usebruno.com), <span class="nowrap">2026-11-05</span></strong>
+    <span class="muted">A <code>--no-people</code> run: segments and companies only, no individuals named.</span>
+    <dl>
+      <div><dt>Searches</dt><dd>8</dd></div>
+      <div><dt>Pages read</dt><dd>10</dd></div>
+      <div><dt>Prospects kept</dt><dd>6</dd></div>
+      <div><dt>Verified</dt><dd>6 of 6</dd></div>
+    </dl>
+    <img src="preview.svg" width="760" height="406" alt="Summary of the Bruno report: four segments and two companies with their fit scores, each marked Verified on 2026-11-05.">
+  </a>
+
+  <h2>What this does and does not show</h2>
+  <p>It is one run on one product. All six kept prospects had their quoted evidence on the cited page, which shows the pipeline works end to end; it is not a verification rate, and nobody has measured how often these shortlists turn into replies. The check is lexical: it confirms the words are on the page, not that the claim is true.</p>
+
+  <h2>Check it yourself</h2>
+  <p>Offline, from a clone (schema and score arithmetic, then the four fixture cases CI runs):</p>
+<pre>python3 skills/signal-scout/scripts/finalize.py examples/finder-report.json --validate-only
+python3 evals/pipeline/run.py -v</pre>
+  <p>Live, re-fetching the six cited pages (results can change as pages change):</p>
+<pre>python3 skills/signal-scout/scripts/verify_sources.py examples/finder-report.json</pre>
+
+  <footer class="muted">
+    <a href="finder-report.html">Report</a> · <a href="finder-report.json">Raw JSON</a> · <a href="https://github.com/OrenSegal/signal-scout">Source and limitations on GitHub</a>
+  </footer>
+</main>
+</body>
+</html>
