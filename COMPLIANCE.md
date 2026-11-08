@@ -1,6 +1,6 @@
 # Compliance posture
 
-signal-scout is compliant-by-construction with the tightening GDPR/CCPA stance on B2B prospecting data, because of what it structurally does not do. This page states that posture so a user — or their client — can point at it.
+This page states signal-scout's data practices, mostly in terms of what it does not do, so a user or their client can point at them. It is not a legal opinion, and no privacy lawyer has reviewed it yet (see rule 3 below).
 
 ## What signal-scout never does
 
@@ -12,7 +12,7 @@ signal-scout is compliant-by-construction with the tightening GDPR/CCPA stance o
 
 ## What signal-scout affirmatively does
 
-- **Every claim discloses its source.** Every prospect and battlecard entry carries a `source_url`, and `verify_sources.py` re-fetches it to confirm the cited evidence is on the page before the report ships. Under GDPR's legitimate-interest basis for B2B outreach, being able to tell a person *where you got their information* is a requirement — a signal-scout report has that answer built into every card.
+- **Every claim discloses its source.** Every prospect and battlecard entry carries a `source_url`, and `verify_sources.py` re-fetches it to confirm the cited evidence is on the page before the report ships. When personal data is not collected from the person, GDPR Art. 14 requires telling them where it came from; every card in a report carries that answer.
 - **Data minimization by design.** A report contains what a person or company published publicly, quoted minimally, plus analysis. No profile assembly beyond the cited signal.
 - **Auditability.** Every report logs the queries issued and sources consulted, so the research process is reproducible and reviewable.
 

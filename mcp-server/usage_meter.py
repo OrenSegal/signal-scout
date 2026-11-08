@@ -1,8 +1,8 @@
 """Local call metering — no billing integration.
 
 Logs every research call's token usage and an estimated cost to a JSONL
-file, so real per-call cost and repeat-usage patterns are visible. Nothing
-here talks to a payment provider.
+file, so per-call cost and repeat-usage patterns are visible. Nothing here
+leaves the machine.
 """
 
 from __future__ import annotations
@@ -31,9 +31,8 @@ def _usage_field(usage: Any, name: str) -> int:
 
 
 def calls_today() -> int:
-    """Count metered calls recorded today (UTC). No payment gate exists yet
-    (see server.py's DAILY_CALL_CAP) — this is the only thing standing
-    between a publicly reachable server and an unbounded Anthropic bill."""
+    """Count metered calls recorded today (UTC). server.py's DAILY_CALL_CAP
+    reads this; it is the only spend limit on a reachable server."""
     if not METER_LOG.exists():
         return 0
     today = datetime.now(timezone.utc).date().isoformat()
