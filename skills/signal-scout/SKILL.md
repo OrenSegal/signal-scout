@@ -2,6 +2,11 @@
 name: signal-scout
 description: Turn a startup URL or product description into an evidence-backed, source-verified shortlist of first customers (people to message), market segments (audiences to target with content), and companies (partners to pitch) — using public signals only. Use when the user wants to find early customers, validate demand, research prospects, or plan first outreach for a product.
 license: MIT
+metadata:
+  openclaw:
+    homepage: https://github.com/OrenSegal/signal-scout
+    requires:
+      bins: [python3, curl]
 ---
 
 # Signal Scout
