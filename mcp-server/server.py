@@ -358,8 +358,8 @@ def _validate_depth_focus(depth: str, focus: str, people: bool = False) -> None:
     # expensive call already happened wouldn't protect the budget it exists to protect.
     if calls_today() >= DAILY_CALL_CAP:
         raise RuntimeError(
-            f"Daily call cap ({DAILY_CALL_CAP}) reached; it is the only spend limit — "
-            "refusing to spend more API budget today. Raise SIGNAL_SCOUT_DAILY_CALL_CAP "
+            f"Daily call cap ({DAILY_CALL_CAP}) reached. It is the only spend limit, so this call is refused "
+            "to avoid spending more API budget today. Raise SIGNAL_SCOUT_DAILY_CALL_CAP "
             "if you intend to allow more calls."
         )
 

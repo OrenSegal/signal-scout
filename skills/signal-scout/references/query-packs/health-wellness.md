@@ -34,7 +34,7 @@ person; treat Individuals as the exception, not the default.
 **Timing**
 - New-year / New-you seasonal posts (January, post-holiday)
 - Posts about a new fitness goal or a non-health life event (new job with
-  a gym benefit, a move) — individual-level timing triggers when a specific
+  a gym benefit, a move): individual-level timing triggers when a specific
   poster is identifiable. A diagnosis, medication or treatment is never an
   Individual trigger, even when the poster disclosed it (see
   [COMPLIANCE.md](../../../../COMPLIANCE.md): no use of health status for
