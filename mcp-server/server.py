@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """signal-scout MCP server — makes the research skill callable by other
-agents (B2A distribution), not just usable by a human running Claude Code.
-Free and self-hostable.
+agents, not just usable by a human running Claude Code. Self-hostable.
 
-Two tools, deliberately split by what actually adds value on top of what a
-capable calling agent (Claude Code included) already has for free:
+Two tools, split by what each adds on top of what a capable calling agent
+(Claude Code included) already has:
 
 - `classify_and_score` — the one to reach for by default. Takes findings the
   caller already gathered with its own web_search/web_fetch and does only
   what a bare LLM call doesn't do reliably: disciplined Individual/Segment/
   Company classification, per-type scoring, automated source verification,
-  and a portable HTML report. No web tools, no re-researching — cheaper,
-  and it doesn't pay to redo work the caller can already do itself.
+  and a portable HTML report. No web tools, no re-researching, so it uses
+  fewer tokens and doesn't redo work the caller can already do itself.
 - `find_first_customers` — does its own web research end-to-end. Only worth
   calling when the caller has no web_search/web_fetch of its own; if the
   caller is Claude Code or similar, prefer `classify_and_score` — running a
-  second research agent to duplicate tools the caller already has isn't a
-  real value-add, it's just marked-up compute.
+  second research agent to duplicate tools the caller already has spends a
+  second set of search and model tokens on the same findings.
 
 Both tools default to `people=False`: the hard no-people filter from
 skills/signal-scout/scripts/people_filter.py drops every Individual and
@@ -25,8 +24,8 @@ public or directory-listed server never returns a named person. Pass
 `people=True` only for a private, client-gated run.
 
 Requires ANTHROPIC_API_KEY (or an `ant auth login` profile — the SDK picks
-either up automatically). No payment provider is wired in: every call is
-metered to usage.jsonl via usage_meter.py so real per-call cost is visible.
+either up automatically). Every call is metered to usage.jsonl via
+usage_meter.py so per-call token cost is visible.
 This is a v0 scaffold — smoke-test with a real API key before treating it as
 production.
 """
@@ -64,9 +63,9 @@ OUTPUT_DIR = Path(os.environ.get("SIGNAL_SCOUT_OUTPUT_DIR", str(Path.home() / ".
 MODEL = os.environ.get("SIGNAL_SCOUT_MODEL", "claude-sonnet-5")
 MAX_PAUSE_TURNS = 3  # server-tool loops resume automatically; cap resends so a stuck run can't loop forever
 
-# No payment gate exists — this is the only thing standing between a reachable
-# server and an unbounded Anthropic bill if it's ever exposed publicly. Raise
-# it deliberately, not by removing it.
+# The only spend limit: there is no per-caller auth or quota, so this is what
+# stands between a reachable server and an unbounded Anthropic bill if it's ever
+# exposed publicly. Raise it deliberately, not by removing it.
 DAILY_CALL_CAP = int(os.environ.get("SIGNAL_SCOUT_DAILY_CALL_CAP", "20"))
 
 DEPTH_LIMITS = {"quick": 5, "standard": 10, "deep": 20}
@@ -359,8 +358,8 @@ def _validate_depth_focus(depth: str, focus: str, people: bool = False) -> None:
     # expensive call already happened wouldn't protect the budget it exists to protect.
     if calls_today() >= DAILY_CALL_CAP:
         raise RuntimeError(
-            f"Daily call cap ({DAILY_CALL_CAP}) reached and no payment gate exists yet — "
-            "refusing to spend more API budget today. Raise SIGNAL_SCOUT_DAILY_CALL_CAP "
+            f"Daily call cap ({DAILY_CALL_CAP}) reached. It is the only spend limit, so this call is refused "
+            "to avoid spending more API budget today. Raise SIGNAL_SCOUT_DAILY_CALL_CAP "
             "if you intend to allow more calls."
         )
 

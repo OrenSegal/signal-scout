@@ -897,7 +897,11 @@ def build_html(data: dict[str, Any]) -> str:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
-  <title>{esc(data.get('title', 'Signal Scout'))}</title>
+  <title>{esc(data.get('title', 'Signal Scout'))} · Signal Scout report</title>
+  <meta name="description" content="{esc(data.get('verdict', ''))}">
+  <meta property="og:title" content="{esc(data.get('title', 'Signal Scout'))} · Signal Scout report">
+  <meta property="og:description" content="{esc(data.get('verdict', ''))}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23d9531f'/%3E%3C/svg%3E">
   <style>
     :root {{
       --bg: #15130f;
@@ -910,7 +914,6 @@ def build_html(data: dict[str, Any]) -> str:
       --a: #ff7a45;
       --b: #6fb0a0;
       --c: #d7a544;
-      --link: #8b8fff;
       --danger: #ff8f7a;
       --radius: 18px;
       --shadow: 0 1px 0 rgba(255, 255, 255, .04) inset, 0 14px 34px rgba(0, 0, 0, .38);
@@ -1194,7 +1197,7 @@ def build_html(data: dict[str, Any]) -> str:
     .battle-card p {{ margin: 0 0 10px; font-size: 13.5px; color: var(--ink-soft); }}
     .battle-card p span {{ display: block; margin-bottom: 3px; }}
     .battle-card blockquote {{ margin: 0 0 10px; padding: 10px 14px; border-left: 3px solid var(--warn); background: var(--panel2); border-radius: 8px; font-size: 13px; color: var(--muted); }}
-    .battle-card blockquote a {{ display: block; margin-top: 6px; color: var(--link); font-size: 12px; }}
+    .battle-card blockquote a {{ display: block; margin-top: 6px; color: var(--b); font-size: 12px; }}
     .client-summary {{ background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 26px 28px; margin: 0 0 30px; box-shadow: var(--shadow); }}
     .client-summary .section-head {{ margin-bottom: 14px; }}
     .client-summary .section-head p {{ max-width: none; color: var(--ink-soft); }}
@@ -1264,8 +1267,17 @@ def build_html(data: dict[str, Any]) -> str:
       .plan {{ grid-template-columns: 1fr; }}
       .stats-metrics {{ grid-template-columns: 1fr 1fr; }}
       .stats-metrics > div + div {{ border-left: 0; border-top: 1px solid var(--line); }}
-      .card-head {{ grid-template-columns: 32px 1fr 28px; }}
-      .score {{ grid-column: 1 / -1; }}
+      .top {{ flex-wrap: wrap; gap: 12px; }}
+      .brand, .meta button, .completeness-badge {{ white-space: nowrap; }}
+      .meta {{ flex-wrap: wrap; }}
+      .section-head {{ flex-direction: column; align-items: start; gap: 8px; }}
+      /* Score ring sits beside the title, not on its own row under it. */
+      .card-head {{ grid-template-columns: 1fr 52px; gap: 10px; }}
+      .rank {{ display: none; }}
+      .identity {{ grid-column: 1; grid-row: 1 / span 2; }}
+      .score {{ grid-column: 2; grid-row: 1; width: 52px; height: 52px; }}
+      .score strong {{ font-size: 16px; }}
+      .link-btn {{ grid-column: 2; grid-row: 2; justify-self: center; }}
       .action-row {{ grid-template-columns: 1fr; }}
       .info-grid, .evidence, .patterns, .plan-grid, .comp-grid, .audit-grid, .niche-row, .agent-row, .limits ul {{ grid-template-columns: 1fr; }}
       .creator-strip {{ grid-template-columns: 1fr; }}

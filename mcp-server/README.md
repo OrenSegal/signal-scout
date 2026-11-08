@@ -10,7 +10,7 @@ implemented but untested; source verification, the no-people filter, and
 report generation are the shared scripts covered by the skill's tests
 (see "What's tested vs. not" below).
 
-**This code is free and self-hostable, permanently.** Every call is metered locally to
+It is self-hostable. Every call is metered locally to
 `usage.jsonl` (tokens and an estimated USD cost), so per-call cost is
 visible to whoever runs it.
 
