@@ -55,6 +55,7 @@ from signal_scout_core import (
     TIER_LABELS,
     TIER_VERIFIED,
     compute_score,
+    csv_safe,
     validate_prospect,
 )
 
@@ -166,7 +167,7 @@ def write_csv(data: dict, out_path: Path) -> int:
             for item in data.get(kind) or []:
                 if not isinstance(item, dict):
                     continue
-                writer.writerow([
+                writer.writerow(csv_safe(cell) for cell in [
                     prospect_type,
                     item.get("name", ""),
                     item.get("domain") or "",
