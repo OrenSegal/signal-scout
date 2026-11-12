@@ -96,7 +96,7 @@ Use `websearch` with multiple query angles and source types. Prefer original pag
 ### 3. Research safely
 
 - Use public, intentionally shared professional or business information only.
-- Do not bypass login walls, paywalls, access controls, rate limits, or robots restrictions.
+- Do not bypass login walls, paywalls, access controls, rate limits, or robots restrictions. This governs your own searching and reading. `verify_sources.py` has its own fetch rules (no `robots.txt` handling, Reddit via `old.reddit.com`, archived copies when the live page fails); COMPLIANCE.md describes them.
 - Do not use data brokers, leaked datasets, private groups, personal email discovery, phone enrichment, or sensitive personal information — this applies identically to Company prospects. A "contact path" for a company must be a public, self-serve channel (developer platform signup, partnerships page, published BD contact) — never a scraped executive's personal email or an inferred direct line.
 - Do not infer protected traits or target people using health, financial hardship, political belief, sexuality, religion, or other sensitive attributes.
 - Prefer companies, public professional profiles, public requests, and community posts relevant to the product.
