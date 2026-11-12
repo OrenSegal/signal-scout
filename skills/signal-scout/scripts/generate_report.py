@@ -27,6 +27,7 @@ from signal_scout_core import (
     TIER_LOW_MATCH,
     TIER_UNSUPPORTED,
     TIER_VERIFIED,
+    csv_safe,
 )
 
 # ── Per-type dimension specs ───────────────────────────────────────────────────
@@ -70,6 +71,12 @@ def prose(value: Any) -> str:
     return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", escaped)
 
 
+def script_json(value: Any) -> str:
+    """JSON for an inline <script>: "</" is escaped so a field containing
+    "</script>" cannot end the block."""
+    return json.dumps(value).replace("</", "<\\/")
+
+
 def cc_prompt(label: str, text: str) -> str:
     """Shows the full next-action prompt in the open — never hidden or truncated —
     so whoever reads the report sees exactly what would run before choosing an
@@ -107,7 +114,7 @@ CSV_COLUMNS = [
 
 
 def csv_field(value: Any) -> str:
-    text = "" if value is None else str(value)
+    text = "" if value is None else str(csv_safe(value))
     text = text.replace('"', '""')
     return f'"{text}"'
 
@@ -1390,8 +1397,8 @@ def build_html(data: dict[str, Any]) -> str:
   </div>
 
   <script>
-    const CSV_DATA = {json.dumps(csv_data)};
-    const CSV_FILENAME = {json.dumps(csv_filename)};
+    const CSV_DATA = {script_json(csv_data)};
+    const CSV_FILENAME = {script_json(csv_filename)};
 
     document.getElementById('exportCsvBtn').addEventListener('click', (e) => {{
       const blob = new Blob([CSV_DATA], {{ type: 'text/csv;charset=utf-8;' }});

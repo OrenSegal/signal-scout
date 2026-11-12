@@ -94,6 +94,21 @@ class CsvTests(unittest.TestCase):
         self.assertEqual(row["next_action"], "hi")
 
 
+class CsvFormulaTests(unittest.TestCase):
+    def test_formula_cells_are_neutralised(self):
+        report = valid_report()
+        report["individuals"][0]["name"] = '=HYPERLINK("http://evil.example","x")'
+        report["individuals"][0]["why_fit"] = "@SUM(1+1)"
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "prospects.csv"
+            write_csv(report, out)
+            with out.open(newline="", encoding="utf-8") as handle:
+                row = list(csv.DictReader(handle))[0]
+        self.assertEqual(row["name"], '\'=HYPERLINK("http://evil.example","x")')
+        self.assertEqual(row["why_fit"], "'@SUM(1+1)")
+        self.assertEqual(row["score"], str(report["individuals"][0]["score"]))
+
+
 class ClientSectionValidationTests(unittest.TestCase):
     def _company(self, **extra) -> dict:
         company = {
