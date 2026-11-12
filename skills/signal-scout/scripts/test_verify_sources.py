@@ -30,7 +30,7 @@ from unittest import mock
 
 import safe_fetch
 import verify_sources
-from signal_scout_core import TIER_BROKEN, TIER_SNIPPET_ONLY, TIER_VERIFIED
+from signal_scout_core import TIER_BROKEN, TIER_SNIPPET_ONLY, TIER_UNSUPPORTED, TIER_VERIFIED, tier_for_evidence
 
 DATE_RE = r"^\d{4}-\d{2}-\d{2}$"
 
@@ -467,6 +467,50 @@ class TestFetchGuard(unittest.TestCase):
             with mock.patch.object(sys, "argv", argv):
                 verify_sources.main()
             self.assertEqual(json.loads(out.read_text(encoding="utf-8"))["individuals"][0]["verification_tier"], TIER_VERIFIED)
+
+
+class TestVerbatimQuotesAreNotAccused(unittest.TestCase):
+    """A quote copied from the page must never tier as Not on page because of
+    markup, typography or script."""
+
+    PAD = "<p>" + "Bruno is an open source API client that stores collections as plain files on disk. " * 4 + "</p>"
+
+    def tier(self, evidence: str, html: str) -> str:
+        parser = verify_sources._TextExtractor()
+        parser.feed(html)
+        return tier_for_evidence(evidence, parser.text())[0]
+
+    def test_adjacent_blocks_without_whitespace(self):
+        html = "<h1>Pricing</h1><p>Teams pay per seat</p><ul><li>Offline first</li><li>Git sync</li></ul>" + self.PAD
+        self.assertEqual(self.tier("Offline first", html), TIER_VERIFIED)
+        self.assertEqual(self.tier("Teams pay per seat", html), TIER_VERIFIED)
+
+    def test_inline_markup_does_not_split_a_word(self):
+        parser = verify_sources._TextExtractor()
+        parser.feed("<p>un<b>believ</b>able <a href='#'>link</a>s</p>")
+        self.assertEqual(parser.text(), "unbelievable links")
+
+    def test_curly_apostrophe_on_page_straight_in_evidence(self):
+        html = ("<p>We switched because Bruno\u2019s offline mode works and Postman\u2019s cloud sync kept "
+                "failing for our team every single week.</p>" + self.PAD)
+        evidence = "We switched because Bruno's offline mode works and Postman's cloud sync kept failing"
+        self.assertEqual(self.tier(evidence, html), TIER_VERIFIED)
+
+    def test_non_latin_verbatim_quotes(self):
+        hebrew = ("\u05d4\u05db\u05dc\u05d9 \u05d4\u05d6\u05d4 \u05d0\u05d9\u05d8\u05d9 \u05de\u05d3\u05d9 "
+                  "\u05d5\u05d0\u05e0\u05d7\u05e0\u05d5 \u05de\u05d7\u05e4\u05e9\u05d9\u05dd \u05d7\u05dc\u05d5\u05e4\u05d4")
+        japanese = "\u3053\u306e\u30c4\u30fc\u30eb\u306f\u9045\u3059\u304e\u308b\u306e\u3067\u4ee3\u308f\u308a\u3092\u63a2\u3057\u3066\u3044\u307e\u3059"
+        for quote in (hebrew, japanese):
+            page = "<p>" + ("\u524d\u7f6e " + quote + "\u3002 ") * 12 + "</p>"
+            self.assertEqual(self.tier(quote, page), TIER_VERIFIED, quote)
+
+    def test_non_latin_claim_absent_from_page_is_still_caught(self):
+        japanese = "\u3053\u306e\u30c4\u30fc\u30eb\u306f\u9045\u3059\u304e\u308b\u306e\u3067\u4ee3\u308f\u308a\u3092\u63a2\u3057\u3066\u3044\u307e\u3059"
+        self.assertEqual(self.tier(japanese, self.PAD), TIER_UNSUPPORTED)
+
+    def test_accented_capitalized_word_on_page(self):
+        html = "<p>Our team at Caf\u00e9 Roma moved every collection to Bruno last spring.</p>" + self.PAD
+        self.assertEqual(self.tier("Our team at Caf\u00e9 Roma moved every collection to Bruno", html), TIER_VERIFIED)
 
 
 if __name__ == "__main__":

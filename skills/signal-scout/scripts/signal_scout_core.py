@@ -178,8 +178,18 @@ SUPPORTED_THRESHOLD = 0.10   # below this on *both* signals ⇒ the claim is not
 MIN_PAGE_TEXT_CHARS = 200
 
 
+# Scripts written without spaces between words. Each character is its own
+# token, so a quote's character sequences can be found inside a longer line.
+_UNSPACED = re.compile(r"([\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af])")
+
+
+def _plain(text: Any) -> str:
+    """Typographic apostrophes as "'": pages print Bruno\u2019s, evidence is typed Bruno's."""
+    return re.sub("[\u2018\u2019\u02bc]", "'", str(text or ""))
+
+
 def _words(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9']+", str(text or "").lower())
+    return re.findall(r"(?:[^\W_]|')+", _UNSPACED.sub(r" \1 ", _plain(text).lower()))
 
 
 def _ngrams(words: list[str], size: int) -> set[tuple[str, ...]]:
@@ -296,8 +306,8 @@ def missing_specifics(evidence: str, page_text: str) -> list[str]:
     missing += sorted(i for i in _letter_identifiers(evidence)
                       if " " + " ".join(_words(i)) + " " not in page_lower)
     page_words = set(_words(page_text))
-    for i, sentence in enumerate(_SENTENCE_BREAK.split(str(evidence or ""))):
-        tokens = re.findall(r"[A-Za-z][A-Za-z']*", sentence)
+    for i, sentence in enumerate(_SENTENCE_BREAK.split(_plain(evidence))):
+        tokens = re.findall(r"[^\W\d_](?:[^\W\d_]|')*", sentence)
         skip_first = i == 0 or (tokens and (tokens[0].lower() in _STOPWORDS or tokens[0].lower() in _SENTENCE_OPENERS))
         for token in tokens[1:] if skip_first else tokens:
             if len(token) >= 2 and token[0].isupper() and token.lower() not in page_words:
