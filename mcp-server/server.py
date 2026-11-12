@@ -282,6 +282,7 @@ def _finish_run(
 
     verification_timed_out = False
     verification_output = ""
+    verify_failed = False
     try:
         verify = subprocess.run(
             [
@@ -293,6 +294,7 @@ def _finish_run(
             timeout=VERIFY_TIMEOUTS[depth],
         )
         verification_output = verify.stdout.strip()
+        verify_failed = verify.returncode != 0
     except subprocess.TimeoutExpired:
         verification_timed_out = True
         verification_output = (
@@ -308,9 +310,29 @@ def _finish_run(
     if not people:
         _redact_written_files()
 
+    # verify_sources exits non-zero when a source is broken or a claim is not on
+    # its page. finalize.py stops there; a tool call cannot be fixed and re-run by
+    # hand, so the report is built from the handoff, which leaves those out.
+    report_source = analysis_path
+    disqualified = 0
+    if verify_failed:
+        if not handoff_path.exists():
+            raise RuntimeError(f"Source verification did not complete: {verify.stderr.strip()[-400:]}")
+        kept = json.loads(handoff_path.read_text(encoding="utf-8"))
+        if not has_prospects(kept):
+            raise RuntimeError(
+                "Source verification disqualified every prospect (broken source or claim not on its page); "
+                f"no report was written. Annotated analysis: {analysis_path}"
+            )
+        annotated = json.loads(analysis_path.read_text(encoding="utf-8"))
+        disqualified = sum(
+            len(annotated.get(k) or []) - len(kept.get(k) or []) for k in ("individuals", "segments", "companies")
+        )
+        report_source = handoff_path
+
     report_path = run_dir / f"report-{stamp}.html"
     generate = subprocess.run(
-        [sys.executable, str(SKILL_SCRIPTS / "generate_report.py"), str(analysis_path), str(report_path)],
+        [sys.executable, str(SKILL_SCRIPTS / "generate_report.py"), str(report_source), str(report_path)],
         capture_output=True,
         text=True,
         timeout=60,
@@ -318,7 +340,7 @@ def _finish_run(
     if generate.returncode != 0:
         raise RuntimeError(f"Report generation failed: {generate.stderr.strip()}")
 
-    reloaded = json.loads(analysis_path.read_text(encoding="utf-8"))  # verify --annotate-out edited it in place
+    reloaded = json.loads(report_source.read_text(encoding="utf-8"))  # what the report shows
 
     return {
         "verdict": reloaded.get("verdict"),
@@ -331,6 +353,7 @@ def _finish_run(
         "people": people,
         "source_verification": verification_output,
         "verification_timed_out": verification_timed_out,
+        "disqualified_by_verification": disqualified,
         "estimated_cost_usd": cost,
     }
 
@@ -395,7 +418,9 @@ def classify_and_score(
             Individuals; use it only for a private, client-gated report, never a public one.
 
     Returns a summary plus paths to the full JSON analysis and the standalone HTML report
-    (verified via verify_sources.py --apply before the report is generated).
+    Sources are checked by verify_sources.py first; a prospect whose source is broken or
+    whose claim is not on its page is left out of the report and counted in
+    `disqualified_by_verification`.
     """
     _validate_depth_focus(depth, focus, people)
     if not findings:
@@ -414,8 +439,8 @@ def find_first_customers(
 
     Only reach for this if you have no web_search/web_fetch of your own — if you do (most
     agent harnesses, including Claude Code, already have both), gather findings yourself
-    and call classify_and_score instead. Paying this tool to re-run searches you could run
-    yourself for free doesn't add value; it just marks up compute.
+    and call classify_and_score instead. This tool would repeat searches you can already run,
+    spending a second set of search and model tokens on the same findings.
 
     Args:
         product_url: The startup's URL, repo, or a one-line product description.
@@ -427,7 +452,9 @@ def find_first_customers(
             Individuals; use it only for a private, client-gated report, never a public one.
 
     Returns a summary plus paths to the full JSON analysis and the standalone HTML report
-    (verified via verify_sources.py --apply before the report is generated).
+    Sources are checked by verify_sources.py first; a prospect whose source is broken or
+    whose claim is not on its page is left out of the report and counted in
+    `disqualified_by_verification`.
     """
     _validate_depth_focus(depth, focus, people)
     analysis, usage = _run_research(product_url, depth, focus, people)

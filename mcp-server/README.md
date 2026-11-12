@@ -6,7 +6,7 @@ workflow orchestrator — can call it and get back a scored, verified report,
 machine-to-machine.
 
 This is a v0 scaffold. The research loop and classification are
-implemented but untested; source verification, the no-people filter, and
+implemented but have never run against the API; source verification, the no-people filter, and
 report generation are the shared scripts covered by the skill's tests
 (see "What's tested vs. not" below).
 
@@ -56,8 +56,11 @@ other people's agents can reach. Details and limits: [COMPLIANCE.md](../COMPLIAN
    a trimmed version of the skill's JSON schema), with continuation turns
    for long-running server-tool loops (`pause_turn`).
 2. Writes the result to `analysis-<date>.json`.
-3. Runs `verify_sources.py` with `--annotate-out`/`--handoff-out` (drops
-   broken/not-on-page prospects, tags bot-walled ones) — the same script the
+3. Runs `verify_sources.py` with `--annotate-out`/`--handoff-out` (tags every
+   prospect; the handoff leaves out broken-source and not-on-page ones). If
+   any were left out, the report is built from the handoff and the result
+   carries `disqualified_by_verification`; if none are left, the tool raises
+   instead of writing a report. This is the same script the
    human-facing skill uses. In the default no-people mode, Individuals are
    dropped before this step and person references are redacted after it.
 4. Runs `generate_report.py` to produce the standalone HTML report.
@@ -84,12 +87,15 @@ Environment variables (all optional):
 
 ## What's tested vs. not
 
-Nothing in `mcp-server/` has automated tests. There is no test file here and
-CI does not run this directory. The scripts it shells out to
+`McpServerTests` in `skills/signal-scout/scripts/test_people_filter.py` loads
+`server.py` with the `anthropic` and `mcp` modules stubbed and runs in CI. It
+covers `_finish_run` (the no-people filter on every file and on the returned
+result, verification timeout, a verifier crash, a failed verification) and
+the `people` and `focus` argument checks. The scripts the server shells out to
 (`verify_sources.py`, `generate_report.py`) are covered by the tests under
-`skills/signal-scout/scripts/` and by `evals/pipeline/`. The server's own
-logic (JSON parsing, `pause_turn` continuation, `refusal` handling, input
-validation, usage metering) has not been exercised, with a mock or otherwise.
+`skills/signal-scout/scripts/` and by `evals/pipeline/`. The model call itself
+(JSON parsing, `pause_turn` continuation, `refusal` handling) and usage
+metering have not been exercised, with a mock or otherwise.
 
 **Not yet tested: an actual live call.** The `web_search_20260209` /
 `web_fetch_20260209` tool declarations and the `output_config.format` JSON
