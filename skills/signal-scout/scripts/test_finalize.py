@@ -7,12 +7,21 @@ tests; these tests exercise only what finalize.py adds itself. No network.
 
 from __future__ import annotations
 
+import contextlib
 import csv
+import http.server
+import io
+import json
+import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
+import finalize
 from finalize import CSV_COLUMNS, next_action_for, validate, write_csv
+from signal_scout_core import compute_score
 
 
 def valid_individual() -> dict:
@@ -161,6 +170,85 @@ class ClientSectionValidationTests(unittest.TestCase):
              "counter_angle": "a", "source_url": "https://example.com/c"},
         ]}
         self.assertEqual(validate(data), [])
+
+
+class ScoreWeightTests(unittest.TestCase):
+    """Every dimension gets a different rating, so moving weight from one
+    dimension to another changes the result."""
+
+    def test_each_weight_is_pinned(self):
+        cases = {
+            "individual": ({"pain_strength": 5, "product_fit": 4, "timing": 3, "reachability": 2, "evidence_quality": 1}, 66),
+            "segment": ({"pain_strength": 5, "product_fit": 4, "timing": 3, "evidence_quality": 2}, 75),
+            "company": ({"strategic_fit": 5, "timing": 4, "execution_ease": 3, "evidence_quality": 2}, 73),
+        }
+        for prospect_type, (dimensions, expected) in cases.items():
+            self.assertEqual(compute_score(prospect_type, dimensions), expected, prospect_type)
+
+
+PAGE_TEXT = "We moved our whole test suite off the hosted runner last month because builds queued for an hour. " * 4
+
+
+class _Page(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = f"<html><body><p>{PAGE_TEXT}</p></body></html>".encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+class FinalizeEndToEndVerification(unittest.TestCase):
+    """finalize.py run for real against a local page: a claim that is not on
+    its page stops the run before any report is written."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Page)
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+        cls.url = f"http://127.0.0.1:{cls.server.server_address[1]}/post"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def run_finalize(self, tmp: str, evidence: str) -> tuple[int, str]:
+        report = valid_report()
+        report["individuals"][0].update(source_url=self.url, evidence=evidence)
+        src = Path(tmp) / "analysis.json"
+        src.write_text(json.dumps(report), encoding="utf-8")
+        out = io.StringIO()
+        code = 0
+        with mock.patch.object(sys, "argv", ["finalize.py", str(src), "--allow-private-addresses"]), \
+                contextlib.redirect_stdout(out):
+            try:
+                finalize.main()
+            except SystemExit as exc:
+                code = int(exc.code or 0)
+        return code, out.getvalue()
+
+    def test_claim_on_the_page_produces_a_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = self.run_finalize(tmp, "We moved our whole test suite off the hosted runner last month")
+            self.assertEqual(code, 0, out)
+            self.assertTrue((Path(tmp) / "signal-scout-report.html").exists())
+            handoff = json.loads((Path(tmp) / "handoff.json").read_text(encoding="utf-8"))
+            self.assertEqual(len(handoff["individuals"]), 1)
+
+    def test_claim_not_on_the_page_stops_before_the_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = self.run_finalize(tmp, "Their platform group signed a contract with Globex for 250 seats")
+            self.assertEqual(code, 1, out)
+            self.assertIn("verify: FAILED", out)
+            self.assertFalse((Path(tmp) / "signal-scout-report.html").exists())
+            self.assertFalse((Path(tmp) / "prospects.csv").exists())
+            handoff = json.loads((Path(tmp) / "handoff.json").read_text(encoding="utf-8"))
+            self.assertNotIn("individuals", handoff)
 
 
 if __name__ == "__main__":

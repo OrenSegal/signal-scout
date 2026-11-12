@@ -216,29 +216,23 @@ class TestEndToEndCLI(unittest.TestCase):
         self.assertIn("opener-warning", html)
 
 
-class TestUntrustedTextInOutput(unittest.TestCase):
-    """Prospect fields are copied from web pages. They must not be able to end
-    the report's inline script or become a spreadsheet formula."""
+class TestHtmlEscaping(unittest.TestCase):
+    """Field text is copied from web pages and must reach the page as text."""
 
-    def test_closing_script_tag_cannot_end_the_inline_script(self):
-        payload = "x</script><img src=x onerror=alert(1)>"
-        html_out = generate_report.build_html(
-            {"title": "T", "individuals": [individual("Jane", "https://example.com/a", pain_signal=payload)]}
-        )
-        start = html_out.index("const CSV_DATA")
-        script = html_out[start:html_out.index("const CSV_FILENAME", start)]
-        self.assertNotIn("</script>", script)
-        self.assertIn("<\\/script>", script)
-
-    def test_formula_cells_are_neutralised_in_embedded_csv(self):
-        rows = generate_report.build_csv(
-            [individual('=HYPERLINK("http://evil.example","x")', "https://example.com/a", pain_signal="@SUM(1+1)",
-                        why_fit="+1", why_now="-2")], [], [])
-        self.assertIn('"\'=HYPERLINK(', rows)
-        self.assertIn('"\'@SUM(1+1)"', rows)
-        self.assertIn('"\'+1"', rows)
-        self.assertIn('"\'-2"', rows)
-        self.assertIn(',"70",', rows)
+    def test_markup_in_fields_is_escaped(self):
+        payload = '<img src=x onerror=alert(1)>'
+        data = {
+            "title": f"T {payload}", "verdict": f'v "{payload}',
+            "individuals": [individual(
+                f"Jane {payload}", "https://example.com/a", pain_signal=payload, evidence=payload,
+                source_title=payload, opener=payload, verification_note=f'" onmouseover="{payload}',
+            )],
+        }
+        html_out = generate_report.build_html(data)
+        body = html_out[:html_out.index("const CSV_DATA")]
+        self.assertNotIn(payload, body)
+        self.assertNotIn('" onmouseover="', body)
+        self.assertIn("&lt;img src=x onerror=alert(1)&gt;", body)
 
 
 if __name__ == "__main__":

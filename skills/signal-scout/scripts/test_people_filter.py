@@ -502,6 +502,55 @@ class McpServerTests(unittest.TestCase):
             written = "".join(p.read_text(encoding="utf-8") for p in Path(tmp).rglob("*") if p.is_file())
         assert_no_leak(self, written, "files left after a verification crash")
 
+    def failing_verify(self, keep_segment: bool, write_handoff: bool = True):
+        """verify_sources exiting 1: the company's claim is Not on page; the
+        segment is Verified (or also Not on page). The handoff drops what failed."""
+        def run(cmd, **kwargs):
+            if not cmd[1].endswith("verify_sources.py"):
+                return REAL_RUN(cmd, **kwargs)
+            data = json.loads(Path(cmd[2]).read_text(encoding="utf-8"))
+            for item in data.get("segments") or []:
+                item["verification_tier"] = TIER_VERIFIED if keep_segment else "unsupported"
+            for item in data.get("companies") or []:
+                item["verification_tier"] = "unsupported"
+            Path(cmd[cmd.index("--annotate-out") + 1]).write_text(json.dumps(data), encoding="utf-8")
+            if write_handoff:
+                handoff = {k: v for k, v in data.items() if k != "companies"}
+                if not keep_segment:
+                    handoff.pop("segments")
+                Path(cmd[cmd.index("--handoff-out") + 1]).write_text(json.dumps(handoff), encoding="utf-8")
+            return subprocess.CompletedProcess(cmd, 1, stdout="1 claim(s) are NOT ON THE PAGE they cite.", stderr="boom")
+        return run
+
+    def finish_with(self, tmp: str, run) -> dict:
+        with mock.patch.object(self.server, "OUTPUT_DIR", Path(tmp)), \
+                mock.patch.object(self.server.subprocess, "run", run), \
+                mock.patch.object(self.server, "record_call", lambda **kw: 0.0):
+            return self.server._finish_run(
+                fixture(), None, product_url="https://ci.example", depth="standard", focus="all", people=False,
+            )
+
+    def test_not_on_page_prospect_is_left_out_of_the_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self.finish_with(tmp, self.failing_verify(keep_segment=True))
+            report = Path(result["report_path"]).read_text(encoding="utf-8")
+        self.assertEqual((result["segments"], result["companies"]), (1, 0))
+        self.assertEqual(result["disqualified_by_verification"], 1)
+        self.assertNotIn(">Not on page<", report)
+        self.assertIn("Teams with flaky CI", report)
+
+    def test_no_report_when_every_prospect_fails_verification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(RuntimeError, "every prospect"):
+                self.finish_with(tmp, self.failing_verify(keep_segment=False))
+            self.assertEqual(list(Path(tmp).rglob("report-*.html")), [])
+
+    def test_no_report_when_the_verifier_fails_without_a_handoff(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(RuntimeError, "did not complete"):
+                self.finish_with(tmp, self.failing_verify(keep_segment=True, write_handoff=False))
+            self.assertEqual(list(Path(tmp).rglob("report-*.html")), [])
+
     def test_verify_timeout_sized_to_depth(self):
         timeouts = self.server.VERIFY_TIMEOUTS
         self.assertLess(timeouts["quick"], timeouts["standard"])
