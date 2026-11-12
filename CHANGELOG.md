@@ -27,7 +27,7 @@
 
 ## 1.6.0
 
-Client-deliverable report capabilities (designed for the agency / fractional-GTM reader), verification-engine hardening, and a formal compliance posture.
+Client-deliverable report capabilities (designed for the agency / fractional-GTM reader), verification-engine hardening, and a written statement of data practices.
 
 - **Added: authored `executive_summary`** — optional client-facing block (overview, key findings, Monday-morning next steps) rendered under the hero. Synthesis-only by rule: every statement must trace to a verified prospect's fields, so it introduces no unverified claims.
 - **Added: company account tiers** — optional `tier` (1/2/3) + required `tier_rationale` per company; the report groups Companies into **Tier 1 — pursue now / Tier 2 — nurture / Tier 3 — monitor**, turning a flat list into an account plan. Tiering rubric added to research-framework.md (tier = execution priority, not a restatement of the score).
@@ -36,7 +36,7 @@ Client-deliverable report capabilities (designed for the agency / fractional-GTM
 - **Hardened: Wayback Machine fallback in `verify_sources.py`.** When a live page can't be read — dead link, bot wall (incl. Reddit 403), rate limit, or a JS shell with too little text — verification retries against the closest archived copy before assigning a failing tier, and the note discloses the archive date. Upgrades many former Broken/Snippet-only/Unverified results to real containment checks.
 - **Hardened: SPA text extraction.** The HTML text extractor now harvests meta descriptions (`description`, `og:*`, `twitter:*`) and JSON-LD string values, so JS-rendered pages expose their substance to verification instead of failing at the 200-char minimum.
 - Added: `finalize.py` validates the new sections (tier values, tier_rationale, battlecard required fields + URL) and reports non-verified battlecard entries in its condensed summary.
-- Added: COMPLIANCE.md — the compliant-by-construction posture (no brokers, no scraped contacts, no access-control bypass, source disclosed on every claim), stated formally so users and their clients can point at it.
+- Added: COMPLIANCE.md — the data practices (no brokers, no scraped contacts, source disclosed on every claim), written down so users and their clients can point at it.
 - Tests: 95 total across 6 suites — new coverage for Wayback fallback, SPA extraction, battlecard verification/corroboration/handoff-drop, tier rendering, exec summary, trust mark, and the new validations. Existing failure-path tests no longer touch the network.
 
 ## 1.5.0
