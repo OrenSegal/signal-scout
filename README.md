@@ -80,7 +80,7 @@ CI runs [`evals/pipeline/run.py`](evals/pipeline/run.py) on every push. It calls
 - **One real run.** The committed example is n = 1 product and 6 prospects. There is no measured verification pass rate, false-positive rate, or reply rate.
 - **The check is lexical.** It confirms quoted words and specifics are on the page, not that the claim is true or that the page is current. A wrong number that appears elsewhere on the page passes.
 - **The LLM steps are untested.** CI covers validation, scoring and verification on four author-written fixtures. Finding, classifying and rating prospects and writing openers have no automated check ([`evals/README.md`](evals/README.md)).
-- **The no-people filter is pattern matching**, not entity recognition; a person named only inside a quote can slip through ([COMPLIANCE.md](COMPLIANCE.md)).
+- **The no-people filter is pattern matching**, not entity recognition; a person who was never recorded as an Individual is not detected, in a quote or any other field ([COMPLIANCE.md](COMPLIANCE.md) lists what gets through).
 - **The MCP server has never made a live call** and has no tests ([`mcp-server/README.md`](mcp-server/README.md)).
 - **`generate_report.py` is about 1,550 lines** in one file; [`docs/decisions.md`](docs/decisions.md) says why it has not been split.
 
