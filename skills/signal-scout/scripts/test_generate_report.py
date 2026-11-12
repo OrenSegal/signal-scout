@@ -216,6 +216,31 @@ class TestEndToEndCLI(unittest.TestCase):
         self.assertIn("opener-warning", html)
 
 
+class TestUntrustedTextInOutput(unittest.TestCase):
+    """Prospect fields are copied from web pages. They must not be able to end
+    the report's inline script or become a spreadsheet formula."""
+
+    def test_closing_script_tag_cannot_end_the_inline_script(self):
+        payload = "x</script><img src=x onerror=alert(1)>"
+        html_out = generate_report.build_html(
+            {"title": "T", "individuals": [individual("Jane", "https://example.com/a", pain_signal=payload)]}
+        )
+        start = html_out.index("const CSV_DATA")
+        script = html_out[start:html_out.index("const CSV_FILENAME", start)]
+        self.assertNotIn("</script>", script)
+        self.assertIn("<\\/script>", script)
+
+    def test_formula_cells_are_neutralised_in_embedded_csv(self):
+        rows = generate_report.build_csv(
+            [individual('=HYPERLINK("http://evil.example","x")', "https://example.com/a", pain_signal="@SUM(1+1)",
+                        why_fit="+1", why_now="-2")], [], [])
+        self.assertIn('"\'=HYPERLINK(', rows)
+        self.assertIn('"\'@SUM(1+1)"', rows)
+        self.assertIn('"\'+1"', rows)
+        self.assertIn('"\'-2"', rows)
+        self.assertIn(',"70",', rows)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 
