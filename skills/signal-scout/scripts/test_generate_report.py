@@ -216,6 +216,25 @@ class TestEndToEndCLI(unittest.TestCase):
         self.assertIn("opener-warning", html)
 
 
+class TestHtmlEscaping(unittest.TestCase):
+    """Field text is copied from web pages and must reach the page as text."""
+
+    def test_markup_in_fields_is_escaped(self):
+        payload = '<img src=x onerror=alert(1)>'
+        data = {
+            "title": f"T {payload}", "verdict": f'v "{payload}',
+            "individuals": [individual(
+                f"Jane {payload}", "https://example.com/a", pain_signal=payload, evidence=payload,
+                source_title=payload, opener=payload, verification_note=f'" onmouseover="{payload}',
+            )],
+        }
+        html_out = generate_report.build_html(data)
+        body = html_out[:html_out.index("const CSV_DATA")]
+        self.assertNotIn(payload, body)
+        self.assertNotIn('" onmouseover="', body)
+        self.assertIn("&lt;img src=x onerror=alert(1)&gt;", body)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 

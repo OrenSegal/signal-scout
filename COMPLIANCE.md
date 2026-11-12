@@ -6,15 +6,28 @@ This page states signal-scout's data practices, mostly in terms of what it does 
 
 - **No data brokers, no scraped contact databases.** Prospects come from public web search and public pages only. There is no enrichment API, no purchased list, no email-finder.
 - **No personal contact discovery.** No personal email addresses, phone numbers, or home addresses — ever. An Individual's `suggested_channel` is the public channel already attached to their own post (reply, DM on the platform they posted on). A Company's `contact_path` must be a public, self-serve channel (partnerships page, developer program), never a scraped executive contact.
-- **No bypassing access controls.** No login walls, paywalls, private groups, rate-limit evasion, or robots violations. When a platform blocks automated reading (e.g. Reddit), the claim is downgraded to a disclosed lower-confidence tier, not scraped harder.
+- **No logins, paid access, or private groups.** The skill tells the agent not to go behind login walls, paywalls, or join-gated groups (SKILL.md, "Research safely"). That is an instruction to the agent; no code enforces it. The source verifier is a separate script with its own fetch rules, described under "What the source verifier fetches" below.
 - **No protected-trait targeting.** No inference or use of health status, financial hardship, political belief, religion, sexuality, or other sensitive attributes — for any prospect type.
 - **No automated outreach.** signal-scout drafts; a human sends. Nothing is ever sent, submitted, followed, or connected automatically.
 
 ## What signal-scout affirmatively does
 
-- **Every claim discloses its source.** Every prospect and battlecard entry carries a `source_url`, and `verify_sources.py` re-fetches it to confirm the cited evidence is on the page before the report ships. When personal data is not collected from the person, GDPR Art. 14 requires telling them where it came from; every card in a report carries that answer.
+- **Every claim discloses its source.** Every prospect and battlecard entry carries a `source_url`, and `verify_sources.py` re-fetches it to confirm the cited evidence is on the page before the report ships.
 - **Data minimization by design.** A report contains what a person or company published publicly, quoted minimally, plus analysis. No profile assembly beyond the cited signal.
 - **Auditability.** Every report logs the queries issued and sources consulted, so the research process is reproducible and reviewable.
+
+## What the source verifier fetches
+
+`verify_sources.py` makes plain HTTP requests from the machine that runs it. What it does, as written in the code:
+
+- One GET per cited `source_url`, with the user agent `Mozilla/5.0 (signal-scout verifier)`, a 10-second default timeout, and at most 2 MB read. Requests run one after another with no delay between them.
+- It does not fetch or honor `robots.txt`.
+- A `reddit.com` or `www.reddit.com` URL is fetched from `old.reddit.com` instead, because the main site answers script requests with a bot-check page. The URL shown in the report is unchanged.
+- When the live fetch fails (any HTTP error, including 403 and 429) or returns under 200 characters of text (a JavaScript shell, a consent wall, or a paywall stub), it asks the Wayback Machine for the closest snapshot, and if there is none, requests `archive.ph/newest/<url>`. An archived copy can hold text the live site did not serve to the script. The verification note says which copy was checked.
+- If neither archive has the page: a 429, or a 403 from a platform known to block scripts (Reddit, X, LinkedIn, Glassdoor, Indeed), is tiered Snippet-only and never Verified; anything else is Broken source.
+- Loopback, private, and cloud-metadata addresses are refused (`safe_fetch.py`).
+
+The agent's own searching and reading during research goes through the host's web tools, which follow the host's rules, not these.
 
 ## People data and no-people mode
 
