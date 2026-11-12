@@ -29,12 +29,22 @@ The hard filter that enforces rules 1 and 2 is `finalize.py --no-people` (or `"p
 What the filter does:
 
 - Drops the `individuals` array before source verification, so no person is fetched or verified.
-- Drops any Segment, Company, or battlecard entry whose own source is a personal profile or a post under a personal account (LinkedIn `/in/` and `/posts/`, X/Twitter, Instagram, Facebook, TikTok, Threads, Reddit `/user/`, Hacker News user pages, bare GitHub profiles, Bluesky profiles, `/@name` pages, including mobile and other subdomains such as `mobile.twitter.com` and `m.facebook.com`).
-- After verification, redacts from every remaining string: the names and handles of the dropped Individuals (full names match case-sensitively as whole words; a single-word name is skipped when it is an everyday word such as "Will", to avoid mangling sentences), any `@handle` (npm scopes such as `@vercel/og` are left alone) or `u/handle`, personal email addresses (shared role inboxes such as `partners@` stay), and personal profile URLs. Source lists lose any entry that is only a profile URL.
-- Adds a line to `limits` saying how many Individuals, prospects, and references were removed.
+- Drops any Segment, Company, or battlecard entry whose own source is a personal profile or a post under a personal account (LinkedIn `/in/`, `/posts/` and `/pulse/`, YouTube `/c/`, `/user/` and `/channel/`, X/Twitter, Instagram, Facebook, TikTok, Threads, Reddit `/user/`, Hacker News user pages, bare GitHub profiles, Bluesky profiles, `/@name` pages, including mobile and other subdomains such as `mobile.twitter.com` and `m.facebook.com`).
+- After verification, redacts from every remaining string, and from any dict key that is not a snake_case schema key: the names and handles of the dropped Individuals, any `@handle` (npm scopes such as `@vercel/og` are left alone) or `u/handle`, personal email addresses including `name [at] domain` spellings (shared role inboxes such as `partners@` stay, unless the domain is a recorded name), and personal profile URLs with or without `https://`. Source lists lose any entry that is only a profile URL.
+- A recorded name is matched in any letter case, in composed or decomposed Unicode, with or without accents, without a leading honorific (`Dr.`), and with its parts separated by any whitespace, a hyphen or nothing. Each part of a multi-word name is also redacted on its own ("Jane Doe" removes "Jane" and "Doe"). Names in scripts other than Latin are matched without word boundaries.
+- Adds a line to `limits` saying how many Individuals, prospects, and references were removed, and that the result needs a read before publishing. It does not say the report is free of names.
 - Writes the filtered JSON, `handoff.json`, the HTML report, and `prospects.csv` to a `public/` folder. The input file is left untouched and is private working data: never publish it. Verify sources against that private draft, not the public copy: redacted quotes no longer match the page word for word.
 
-What it does not do: it is pattern matching plus removal of names the analysis recorded as Individuals, not named-entity recognition. A person mentioned only by a bare name inside a quote, who was never recorded as an Individual, is not detected. In no-people mode the skill is told not to write such names, but check a public report by eye before publishing it.
+What it does not do: it is pattern matching plus removal of names the analysis recorded as Individuals, not named-entity recognition. Known to get through:
+
+- A person named in any field (a quote, a Segment or Company name, a `contact_path`) who was never recorded as an Individual. In a run researched with `--no-people` no Individuals are recorded, so this covers every bare name.
+- A recorded name, or a part of one, that is an everyday word ("Will", "Grace", "Young"), a particle ("van", "the") or shorter than three Latin letters, when it appears on its own.
+- Initials and nicknames ("J. Doe" loses "Doe" and keeps "J.").
+- A handle written without `@` or `u/` that was not recorded ("Twitter user janedoe42"), a handle followed by a path other than `/status` (`@janedoe/dotfiles`), and a handle used as a snake_case dict key.
+- A role inbox on a personal domain when that person was not recorded (`hello@janedoe.com`), and phone numbers.
+- Pages on a personal domain or a platform not listed above (`name.substack.com`, `medium.com/name`, `name.medium.com`, Stack Overflow user pages, short links such as `lnkd.in`, mirrors and archive copies of a profile), and a repository or gist under a personal GitHub account.
+
+The filter errs toward removing: a common surname recorded for an Individual ("Park") is removed wherever that word appears. In no-people mode the skill is told not to write names, but read a public report before publishing it.
 
 ## What the user is still responsible for
 
