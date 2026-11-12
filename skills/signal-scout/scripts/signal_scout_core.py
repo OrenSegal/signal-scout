@@ -121,6 +121,14 @@ def validate_prospect(prospect_type: str, item: dict[str, Any]) -> list[str]:
     return errors
 
 
+def csv_safe(value: Any) -> Any:
+    """Prefix a text cell that a spreadsheet would run as a formula (leading
+    = + - @) with an apostrophe. Fields are copied from web pages."""
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@"):
+        return "'" + value
+    return value
+
+
 # ── Verification tiers, shared between verify_sources.py and generate_report.py ──
 
 TIER_VERIFIED = "verified"          # source fetched, evidence is substantially quoted from the live page
