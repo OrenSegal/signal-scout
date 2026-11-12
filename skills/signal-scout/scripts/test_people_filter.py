@@ -551,10 +551,10 @@ class NameMatchingTests(unittest.TestCase):
         self.assertEqual(out, "Acme will launch a program. Will we join?")
         self.assertEqual(n, 0)
 
-    def test_full_name_case_sensitive_whole_word(self):
+    def test_full_name_whole_word_any_case(self):
         names = self.names_for("Will Smith")
-        out, _ = redact_text("Will Smith posted; we will smith nothing.", names)
-        self.assertEqual(out, "[person removed] posted; we will smith nothing.")
+        out, _ = redact_text("Will Smith posted; a willsmithy will not match.", names)
+        self.assertEqual(out, "[person removed] posted; a willsmithy will not match.")
 
     def test_distinctive_handle_token_redacted(self):
         out, _ = redact_text("search from:janedoe ci", self.names_for("janedoe"))
@@ -618,10 +618,10 @@ class UrlIdentifierTests(unittest.TestCase):
         out, _ = redact_text("Thanks JaneDoe and JANEDOE.", self.NAMES)
         self.assertNotIn("janedoe", out.lower())
 
-    def test_full_name_stays_case_sensitive(self):
+    def test_full_name_matches_in_lower_case(self):
         names = collect_person_names({"individuals": [{"name": "Will Smith"}]})
-        out, _ = redact_text("we will smith nothing", names)
-        self.assertEqual(out, "we will smith nothing")
+        out, _ = redact_text("thanks will smith", names)
+        self.assertEqual(out, "thanks [person removed]")
 
 
 class FinalizeInterruptedVerification(unittest.TestCase):
@@ -661,6 +661,121 @@ class RedactPeopleUnit(unittest.TestCase):
         self.assertIn(ISSUE_URL, out)
         self.assertNotIn("linkedin.com/in", out)
         self.assertEqual(n, 1)
+
+
+class RecordedNameVariants(unittest.TestCase):
+    """A name the analysis recorded as an Individual must not survive in any
+    spelling the filter can reasonably derive from it."""
+
+    def names_for(self, name: str) -> list[str]:
+        return collect_person_names({"individuals": [{"name": name}]})
+
+    def check(self, recorded: str, text: str, *leaks: str):
+        out, n = redact_text(text, self.names_for(recorded))
+        for leak in leaks:
+            self.assertNotIn(leak.lower(), out.lower(), f"{recorded!r} in {text!r} -> {out!r}")
+        self.assertGreater(n, 0, text)
+
+    def test_short_single_token_names(self):
+        self.check("Lena", "Lena said it is slow", "Lena")
+        self.check("\u674e\u96f7", "\u674e\u96f7 said so", "\u674e\u96f7")
+
+    def test_cjk_name_inside_running_text(self):
+        self.check("\u738b\u5c0f\u660e", "\u738b\u5c0f\u660e\u8bf4\u592a\u6162\u4e86", "\u738b\u5c0f\u660e")
+
+    def test_hebrew_name_with_prefix_letter(self):
+        name = "\u05d3\u05e0\u05d4 \u05dc\u05d5\u05d9"
+        self.check(name, "\u05d5" + name + " \u05db\u05ea\u05d1\u05d4", name)
+
+    def test_case_variants(self):
+        self.check("Jane Doe", "jane doe said it", "jane doe")
+        self.check("Jane Doe", "JANE DOE said it", "jane doe")
+
+    def test_single_tokens_of_a_full_name(self):
+        self.check("Jane Doe", "Ms. Doe said it", "Doe")
+        self.check("Jane Doe", "Jane said it", "Jane")
+        self.check("Jane Doe", "Doe, Jane", "Doe", "Jane")
+
+    def test_whitespace_and_joiner_variants(self):
+        self.check("Jane Doe", "Jane\u00a0Doe said it", "Jane", "Doe")
+        self.check("Jane Doe", "Jane  Doe said it", "Jane", "Doe")
+        self.check("Jane Doe", "Jane-Doe and JaneDoe agree", "Jane", "Doe")
+
+    def test_title_is_not_part_of_the_name(self):
+        self.check("Dr. Jane Doe", "Jane Doe said it", "Jane Doe")
+        self.check("Prof. Jane Doe", "Doe said it", "Doe")
+
+    def test_decomposed_and_unaccented_spellings(self):
+        recorded = "Jos\u00e9 \u00c1lvarez"
+        self.check(recorded, "Jose\u0301 A\u0301lvarez said", "lvarez")
+        self.check(recorded, "Jose Alvarez said", "Alvarez", "Jose")
+
+    def test_everyday_word_tokens_are_still_left_alone(self):
+        out, _ = redact_text("Smith posted; we will ship it.", self.names_for("Will Smith"))
+        self.assertEqual(out, "[person removed] posted; we will ship it.")
+
+    def test_name_as_dict_key(self):
+        data = {"individuals": [{"name": "Jane Doe"}], "segments": [segment("Teams", THREAD_URL, "e")],
+                "notes": {"Jane Doe": "x", "by_person": {"jane.doe@acme.com": "y"}}}
+        out, stats = strip_people(data)
+        dumped = json.dumps(out)
+        self.assertNotIn("Jane Doe", dumped)
+        self.assertNotIn("jane.doe@acme.com", dumped)
+        self.assertGreater(stats["redactions"], 0)
+
+
+class ContactPatternVariants(unittest.TestCase):
+    def clean(self, text: str, *leaks: str, names: list[str] | None = None):
+        out, n = redact_text(text, names or [])
+        for leak in leaks:
+            self.assertNotIn(leak, out, f"{text!r} -> {out!r}")
+        self.assertGreater(n, 0, text)
+
+    def test_scheme_less_profile_url(self):
+        self.clean("profile: linkedin.com/in/jane-doe-123 (no scheme)", "jane-doe")
+        self.clean("see www.x.com/janedoe.", "janedoe")
+
+    def test_scheme_less_public_url_is_kept(self):
+        text = "docs at github.com/acme/ci-runner/issues/42 and acme.com/partners"
+        out, n = redact_text(text, [])
+        self.assertEqual((out, n), (text, 0))
+
+    def test_linkedin_article_and_youtube_channel_urls_are_personal(self):
+        for url in ("https://www.linkedin.com/pulse/why-ci-hurts-jane-doe-xyz", "https://www.youtube.com/c/JaneDoe",
+                    "https://www.youtube.com/user/JaneDoe", "https://www.youtube.com/channel/UCabc"):
+            self.assertTrue(is_personal_url(url), url)
+        self.assertFalse(is_personal_url("https://www.youtube.com/watch?v=abc"))
+
+    def test_non_ascii_email(self):
+        self.clean("mail jos\u00e9@acme.com", "acme.com", "jos")
+
+    def test_fullwidth_at_sign(self):
+        self.clean("ping \uff20janedoe or jane\uff20acme.com", "janedoe", "acme.com")
+
+    def test_obfuscated_email(self):
+        self.clean("jane [at] acme [dot] com", "jane", "acme")
+        self.clean("jane(at)acme.com", "jane", "acme")
+
+    def test_non_ascii_handle_is_removed_whole(self):
+        out, _ = redact_text("@jos\u00e9_garc\u00eda wrote this", [])
+        self.assertEqual(out, "[person removed] wrote this")
+
+    def test_handle_followed_by_status_path(self):
+        self.clean("see @janedoe/status/123", "janedoe")
+
+    def test_role_inbox_on_a_recorded_persons_domain(self):
+        names = collect_person_names({"individuals": [{"name": "Jane Doe"}]})
+        self.clean("contact hello@janedoe.com", "janedoe", names=names)
+        out, _ = redact_text("contact hello@acme.com", names)
+        self.assertIn("hello@acme.com", out)
+
+
+class LimitsNoteWording(unittest.TestCase):
+    def test_note_does_not_claim_the_report_names_no_people(self):
+        out, _ = strip_people(fixture())
+        note = [x for x in out["limits"] if str(x).startswith("No-people mode:")][0]
+        self.assertNotIn("names no people", note)
+        self.assertIn("review before publishing", note)
 
 
 if __name__ == "__main__":

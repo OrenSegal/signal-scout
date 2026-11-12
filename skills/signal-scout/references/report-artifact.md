@@ -42,7 +42,7 @@ This file is the schema authority — SKILL.md holds only a compact summary. Dra
 }
 ```
 
-With `"people": false` (or `finalize.py --no-people`), the published output carries no Individuals and no person names, handles, personal emails, or profile URLs in any field. finalize.py writes it to a `public/` folder next to the input and leaves the input untouched. See COMPLIANCE.md for exactly what the filter catches and what it does not.
+With `"people": false` (or `finalize.py --no-people`), the published output carries no Individuals, and person names, handles, personal emails, and profile URLs that match the filter's patterns are redacted from every field. It is a pattern filter, not a guarantee. finalize.py writes it to a `public/` folder next to the input and leaves the input untouched. See COMPLIANCE.md for exactly what the filter catches and what it does not.
 
 At least one of `individuals`, `segments`, `companies` must be non-empty. Omit an array entirely rather than including it empty.
 
