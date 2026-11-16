@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed: `verify_sources.py` no longer switches to proxy mode when HTTP(S)_PROXY is set. Through a proxy the proxy makes the connection, so the address check runs before the request and a rebinding DNS answer can reach an internal service. Fetches now connect directly and check every address at connect time. Pass `--use-proxy` (to `verify_sources.py` or `finalize.py`) on a machine with no direct route out; when a proxy is set but unused and sources come back Broken, both scripts say so. The MCP server never uses a proxy.
+
 ## 1.7.0
 
 - Fixed: `tier_for_evidence` had no check on specifics, so "$12M Series A led by Sequoia" on a page naming only the company came back Paraphrased and stayed in the report. Numbers, scale words, capitalized names and identifiers like `Series A` now have to be on the page, or the prospect is Not on page. Ported from cited.
