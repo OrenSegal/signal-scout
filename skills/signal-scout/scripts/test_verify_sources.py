@@ -19,7 +19,9 @@ from __future__ import annotations
 
 import http.server
 import json
+import os
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -467,6 +469,17 @@ class TestFetchGuard(unittest.TestCase):
             with mock.patch.object(sys, "argv", argv):
                 verify_sources.main()
             self.assertEqual(json.loads(out.read_text(encoding="utf-8"))["individuals"][0]["verification_tier"], TIER_VERIFIED)
+
+
+class TestProxyIsOptIn(unittest.TestCase):
+    def test_a_proxy_in_the_environment_keeps_the_connect_time_check(self):
+        # TestFetchGuard replaces POLICY, so read the import-time default in a fresh process.
+        env = dict(os.environ, HTTP_PROXY="http://127.0.0.1:9", HTTPS_PROXY="http://127.0.0.1:9")
+        out = subprocess.run(
+            [sys.executable, "-c", "import verify_sources; print(verify_sources.POLICY.use_env_proxy)"],
+            cwd=Path(__file__).parent, env=env, capture_output=True, text=True, check=True,
+        ).stdout
+        self.assertEqual(out.strip(), "False")
 
 
 class TestVerbatimQuotesAreNotAccused(unittest.TestCase):

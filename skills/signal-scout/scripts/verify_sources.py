@@ -32,7 +32,8 @@ rewording a real signal is legitimate; inventing one is not.
 Every fetch goes through safe_fetch.py: source_url is untrusted, so non-http(s)
 schemes and loopback, private and cloud-metadata addresses are refused, also
 after a redirect or a DNS answer, and tier as Broken. --allow-private-addresses
-turns the address check off for checking a local copy of a page.
+turns the address check off for checking a local copy of a page. HTTP(S)_PROXY
+is ignored unless --use-proxy is passed.
 
 Reddit's new UI (reddit.com / www.reddit.com) serves a client-side
 bot-verification interstitial to script fetches — HTTP 200, but the page is
@@ -73,9 +74,16 @@ from signal_scout_core import (
     tier_for_evidence,
 )
 
-# urllib honored HTTP(S)_PROXY here before the guard existed, and a sandbox with
-# no direct route out needs it, so proxy mode follows the environment.
-POLICY = FetchPolicy(use_env_proxy=any(urllib.request.getproxies().get(s) for s in ("http", "https")))
+# Direct connections by default, so every address is checked at connect time.
+# Proxy mode is opt-in (--use-proxy): the proxy connects, so the check runs
+# before the request and a rebinding DNS answer can still differ.
+POLICY = FetchPolicy()
+PROXY_HINT = ("HTTP(S)_PROXY is set but was not used. If this machine has no direct route out "
+              "(a sandbox), re-run with --use-proxy; the address check is weaker through a proxy.")
+
+
+def env_proxy_set() -> bool:
+    return any(urllib.request.getproxies().get(s) for s in ("http", "https"))
 
 
 BOT_WALLED_DOMAINS = (
@@ -373,6 +381,13 @@ def main() -> None:
         "of a page; never on input you did not write.",
     )
     parser.add_argument(
+        "--use-proxy",
+        action="store_true",
+        help="Fetch through HTTP(S)_PROXY, for a machine with no direct route out. The proxy "
+        "makes the connection, so addresses are checked before the request and DNS rebinding "
+        "is not prevented.",
+    )
+    parser.add_argument(
         "--annotate-out",
         type=Path,
         help="Write the input JSON back out with a verification_tier/verification_note "
@@ -387,9 +402,11 @@ def main() -> None:
         "consumer) without carrying dead links or unsupported claims forward.",
     )
     args = parser.parse_args()
+    global POLICY
     if args.allow_private_addresses:
-        global POLICY
         POLICY = dataclasses.replace(POLICY, allow_private=True)
+    if args.use_proxy:
+        POLICY = dataclasses.replace(POLICY, use_env_proxy=True)
 
     data = json.loads(args.input.read_text(encoding="utf-8"))
     results: list[tuple[str, str, str, str, float, float]] = []
@@ -476,6 +493,8 @@ def main() -> None:
         )
     if broken:
         print(f"\n{broken} source(s) are unreachable or invalid. Drop the prospect or find a working source.")
+        if not POLICY.use_env_proxy and env_proxy_set():
+            print(PROXY_HINT)
     if counts.get(TIER_SNIPPET_ONLY):
         print("\nSnippet-only entries: keep only if the evidence came from a real discovery-search "
               "snippet, and disclose the unverified status in `limits`.")

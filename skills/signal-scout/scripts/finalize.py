@@ -10,7 +10,7 @@ few output lines instead of four calls and four transcripts.
 Usage:
     python3 finalize.py analysis.json [--out report.html] [--validate-only]
         [--skip-verify] [--no-csv] [--no-people] [--timeout 10]
-        [--allow-private-addresses]
+        [--allow-private-addresses] [--use-proxy]
 
 No-people mode (--no-people, or `"people": false` in the input JSON) is the
 hard filter for public output: Individuals are dropped before verification,
@@ -52,12 +52,14 @@ from pathlib import Path
 
 from people_filter import add_limits_note, drop_people, has_prospects, redact_people
 from signal_scout_core import (
+    TIER_BROKEN,
     TIER_LABELS,
     TIER_VERIFIED,
     compute_score,
     csv_safe,
     validate_prospect,
 )
+from verify_sources import PROXY_HINT, env_proxy_set
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 
@@ -223,6 +225,9 @@ def main() -> None:
     parser.add_argument("--allow-private-addresses", action="store_true",
                         help="Let source_url reach loopback and private addresses during verification. "
                         "For checking a local copy of a page; never on input you did not write")
+    parser.add_argument("--use-proxy", action="store_true",
+                        help="Verify through HTTP(S)_PROXY, for a machine with no direct route out. "
+                        "The proxy connects, so DNS rebinding is not prevented")
     args = parser.parse_args()
 
     input_path = args.input.resolve()
@@ -277,6 +282,7 @@ def main() -> None:
             "--annotate-out", str(verify_path),
             "--handoff-out", str(verify_handoff),
             *(["--allow-private-addresses"] if args.allow_private_addresses else []),
+            *(["--use-proxy"] if args.use_proxy else []),
         ])
         # Re-read the annotated JSON rather than parsing the verifier's table —
         # print only what needs action, not every verified row.
@@ -309,6 +315,8 @@ def main() -> None:
         summary = ", ".join(f"{n} {TIER_LABELS.get(t, t).lower()}" for t, n in sorted(counts.items()))
         print(f"verify: {summary} — handoff written to {handoff}")
         if code != 0:
+            if counts.get(TIER_BROKEN) and not args.use_proxy and env_proxy_set():
+                print(f"verify: {PROXY_HINT}")
             print("verify: FAILED — fix or drop the prospects above (Not on page / Broken source), then re-run")
             sys.exit(1)
     else:
