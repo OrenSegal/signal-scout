@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fixed: `verify_sources.py` tiered a PDF or other binary source "Not on page" (it decoded the bytes as text), and did the same for a real quote past the 2 MB read limit of a long page. Both failed the run and told the user to treat a real citation as fabricated. A body that is not text, or a claim missing from a page that was only partly read, is now Unverified with the reason in the note. A claim absent from a page that was read in full is still Not on page.
+- Fixed: a `source_url` that cannot be parsed (`http://[foo/bar`) crashed `verify_sources.py`; it is now Broken source. A page with a charset label Python does not know (`utf8mb4`) was tiered Broken; it is now read as UTF-8.
+- Fixed: when `verify_sources.py` crashed, `finalize.py` hid its output and told the user to fix or drop prospects that had never been checked. It now prints why the verifier stopped.
+- Fixed: `log_outcome.py --list` crashed when a record had been logged without `--score`.
+- Fixed: the report's inline JSON escaped only `</`, so a field containing `<!--<script` could stop the report's script from running in a browser. `<!--` is now escaped there too.
+- Fixed: `node bin/install.js`, `./install.sh` and `npm pack` copied `__pycache__` bytecode left by a local test run into the installed skill and the package. They now leave it out.
+- Docs: `evals/README.md` pins litmus to v0.2.0, as CI does; an unpinned install (0.3.0) has no `gate` command.
+- MCP server: a model call that was billed and then failed (output cut off at `max_tokens`, a refusal, invalid JSON, a research loop that did not finish) was not metered, so it did not count toward `SIGNAL_SCOUT_DAILY_CALL_CAP`, the only spend limit. Such calls are now metered. Output cut off at `max_tokens` raises an error that says so, where it used to surface as a JSON parse error.
 - Changed: `verify_sources.py` no longer switches to proxy mode when HTTP(S)_PROXY is set. Through a proxy the proxy makes the connection, so the address check runs before the request and a rebinding DNS answer can reach an internal service. Fetches now connect directly and check every address at connect time. Pass `--use-proxy` (to `verify_sources.py` or `finalize.py`) on a machine with no direct route out; when a proxy is set but unused and sources come back Broken, both scripts say so. The MCP server never uses a proxy.
 
 ## 1.7.0
