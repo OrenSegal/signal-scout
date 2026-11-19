@@ -577,7 +577,7 @@ class McpServerTests(unittest.TestCase):
     def test_prompt_tells_model_to_skip_people(self):
         captured = {}
 
-        def fake_complete(system, prompt, tools):
+        def fake_complete(system, prompt, tools, **kwargs):
             captured["prompt"] = prompt
             return {}, None
 

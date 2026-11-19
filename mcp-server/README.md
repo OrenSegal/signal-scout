@@ -84,6 +84,7 @@ Environment variables (all optional):
 | `SIGNAL_SCOUT_MODEL` | `claude-sonnet-5` | Model used for research |
 | `SIGNAL_SCOUT_OUTPUT_DIR` | `~/.signal-scout/reports` | Where analysis JSON + HTML reports land |
 | `SIGNAL_SCOUT_METER_LOG` | `~/.signal-scout/usage.jsonl` | Where call metering is logged |
+| `SIGNAL_SCOUT_DAILY_CALL_CAP` | `20` | Metered calls allowed per UTC day; the only spend limit |
 
 ## What's tested vs. not
 
@@ -93,9 +94,12 @@ covers `_finish_run` (the no-people filter on every file and on the returned
 result, verification timeout, a verifier crash, a failed verification) and
 the `people` and `focus` argument checks. The scripts the server shells out to
 (`verify_sources.py`, `generate_report.py`) are covered by the tests under
-`skills/signal-scout/scripts/` and by `evals/pipeline/`. The model call itself
-(JSON parsing, `pause_turn` continuation, `refusal` handling) and usage
-metering have not been exercised, with a mock or otherwise.
+`skills/signal-scout/scripts/` and by `evals/pipeline/`.
+`skills/signal-scout/scripts/test_mcp_server.py` runs the model-call loop
+against a fake client: output cut off at `max_tokens`, a `refusal`,
+unparseable output, a `pause_turn` loop that never finishes, and an API error
+part-way through each raise and are still metered, so a billed call that
+fails counts toward the daily cap. None of this has run against the real API.
 
 **Not yet tested: an actual live call.** The `web_search_20260209` /
 `web_fetch_20260209` tool declarations and the `output_config.format` JSON

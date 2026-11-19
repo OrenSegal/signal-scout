@@ -39,7 +39,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import anthropic
 from mcp.server.fastmcp import FastMCP
@@ -61,6 +61,7 @@ from people_filter import (  # noqa: E402
 
 OUTPUT_DIR = Path(os.environ.get("SIGNAL_SCOUT_OUTPUT_DIR", str(Path.home() / ".signal-scout" / "reports")))
 MODEL = os.environ.get("SIGNAL_SCOUT_MODEL", "claude-sonnet-5")
+MAX_OUTPUT_TOKENS = 16000
 MAX_PAUSE_TURNS = 3  # server-tool loops resume automatically; cap resends so a stuck run can't loop forever
 
 # The only spend limit: there is no per-caller auth or quota, so this is what
@@ -152,16 +153,41 @@ class _UsageTotal:
             setattr(self, key, value)
 
 
-def _complete(system: str, user_prompt: str, *, tools: list[dict[str, Any]] | None) -> tuple[dict[str, Any], _UsageTotal]:
+def _complete(
+    system: str,
+    user_prompt: str,
+    *,
+    tools: list[dict[str, Any]] | None,
+    on_billed_failure: Callable[[_UsageTotal], Any] | None = None,
+) -> tuple[dict[str, Any], _UsageTotal]:
     """Shared call+continuation+parse loop. `tools=None` skips web tools entirely —
-    classify_and_score never needs them, which is most of why it's cheaper."""
+    classify_and_score never needs them, which is most of why it's cheaper.
+
+    A call can be billed and still fail here: cut off at max_tokens, declined,
+    not valid JSON, or an API error after an earlier turn already returned.
+    `on_billed_failure` gets the tokens used so far in that case, so the call
+    is metered and counts toward DAILY_CALL_CAP like one that succeeded."""
     client = _client()
+    usage_totals: dict[str, int] = {}
+    try:
+        return _complete_billed(client, system, user_prompt, tools, usage_totals)
+    except BaseException:
+        if usage_totals and on_billed_failure is not None:
+            on_billed_failure(_UsageTotal(usage_totals))
+        raise
+
+
+def _complete_billed(
+    client: Any, system: str, user_prompt: str, tools: list[dict[str, Any]] | None, usage_totals: dict[str, int]
+) -> tuple[dict[str, Any], _UsageTotal]:
+    """The loop itself. `usage_totals` is filled in place after every response,
+    so the caller still has it when this raises."""
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_prompt}]
 
     def _call() -> Any:
         kwargs: dict[str, Any] = dict(
             model=MODEL,
-            max_tokens=16000,
+            max_tokens=MAX_OUTPUT_TOKENS,
             system=system,
             thinking={"type": "adaptive"},
             output_config={"format": {"type": "json_schema", "schema": ANALYSIS_SCHEMA}},
@@ -172,13 +198,13 @@ def _complete(system: str, user_prompt: str, *, tools: list[dict[str, Any]] | No
         return client.messages.create(**kwargs)
 
     response = _call()
-    usage_totals = _add_usage(_UsageTotal({}), response.usage)
+    usage_totals.update(_add_usage(_UsageTotal({}), response.usage))
 
     turns = 0
     while response.stop_reason == "pause_turn" and turns < MAX_PAUSE_TURNS:
         messages.append({"role": "assistant", "content": response.content})
         response = _call()
-        usage_totals = _add_usage(_UsageTotal(usage_totals), response.usage)
+        usage_totals.update(_add_usage(_UsageTotal(usage_totals), response.usage))
         turns += 1
 
     if response.stop_reason == "refusal":
@@ -189,11 +215,24 @@ def _complete(system: str, user_prompt: str, *, tools: list[dict[str, Any]] | No
     if response.stop_reason == "pause_turn":
         raise RuntimeError(f"Did not finish within {MAX_PAUSE_TURNS} continuation turns.")
 
+    if response.stop_reason == "max_tokens":
+        raise RuntimeError(
+            f"Output was cut off at max_tokens ({MAX_OUTPUT_TOKENS}) before the analysis JSON was complete. "
+            "Retry with a smaller depth."
+        )
+
     text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
     if not text.strip():
         raise RuntimeError(f"No text output returned (stop_reason={response.stop_reason}).")
-    analysis = json.loads(text)
+    try:
+        analysis = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Model output was not valid JSON ({exc}).") from exc
     return analysis, _UsageTotal(usage_totals)
+
+
+def _meter_failed_call(product_url: str, depth: str, focus: str) -> Callable[[_UsageTotal], Any]:
+    return lambda usage: record_call(product_url=product_url, depth=depth, focus=focus, usage=usage, model=MODEL)
 
 
 def _run_research(product_url: str, depth: str, focus: str, people: bool = False) -> tuple[dict[str, Any], _UsageTotal]:
@@ -206,7 +245,10 @@ def _run_research(product_url: str, depth: str, focus: str, people: bool = False
     )
     if not people:
         user_prompt += f"\n{NO_PEOPLE_INSTRUCTION}"
-    return _complete(RESEARCH_SYSTEM_PROMPT, user_prompt, tools=_tools())
+    return _complete(
+        RESEARCH_SYSTEM_PROMPT, user_prompt, tools=_tools(),
+        on_billed_failure=_meter_failed_call(product_url, depth, focus),
+    )
 
 
 def _run_classification(
@@ -225,7 +267,10 @@ def _run_classification(
     )
     if not people:
         user_prompt += f"\n\n{NO_PEOPLE_INSTRUCTION}"
-    return _complete(CLASSIFY_SYSTEM_PROMPT, user_prompt, tools=None)
+    return _complete(
+        CLASSIFY_SYSTEM_PROMPT, user_prompt, tools=None,
+        on_billed_failure=_meter_failed_call(product_url, depth, focus),
+    )
 
 
 def _slugify(value: str) -> str:
