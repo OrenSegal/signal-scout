@@ -251,5 +251,28 @@ class FinalizeEndToEndVerification(unittest.TestCase):
             self.assertNotIn("individuals", handoff)
 
 
+class FinalizeReportsAVerifierCrash(unittest.TestCase):
+    """If verify_sources.py dies, finalize must say so and show why, not tell
+    the user to fix prospects that were never checked."""
+
+    def test_crash_output_is_shown_and_not_blamed_on_prospects(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "analysis.json"
+            src.write_text(json.dumps(valid_report()), encoding="utf-8")
+            out = io.StringIO()
+            crash = (1, "Traceback (most recent call last):\n  boom\nRuntimeError: verifier exploded")
+            with mock.patch.object(sys, "argv", ["finalize.py", str(src)]), \
+                    mock.patch.object(finalize, "run_step", return_value=crash), \
+                    contextlib.redirect_stdout(out), self.assertRaises(SystemExit) as raised:
+                finalize.main()
+            text = out.getvalue()
+            self.assertEqual(raised.exception.code, 1)
+            self.assertIn("verifier exploded", text)
+            self.assertIn("did not complete", text)
+            self.assertNotIn("fix or drop the prospects above", text)
+            self.assertNotIn("handoff written", text)
+            self.assertFalse((Path(tmp) / "signal-scout-report.html").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

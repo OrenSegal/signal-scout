@@ -53,6 +53,7 @@ from pathlib import Path
 from people_filter import add_limits_note, drop_people, has_prospects, redact_people
 from signal_scout_core import (
     TIER_BROKEN,
+    TIER_DISQUALIFYING,
     TIER_LABELS,
     TIER_VERIFIED,
     compute_score,
@@ -276,7 +277,7 @@ def main() -> None:
     if not args.skip_verify:
         handoff = workdir / "handoff.json"
         verify_handoff = verify_path.parent / "handoff.json" if no_people else handoff
-        code, _output = run_step("verify", [
+        code, verify_output = run_step("verify", [
             sys.executable, str(SCRIPTS_DIR / "verify_sources.py"), str(verify_path),
             "--timeout", str(args.timeout),
             "--annotate-out", str(verify_path),
@@ -312,6 +313,12 @@ def main() -> None:
                       f"{entry.get('verification_note') or entry.get('source_url', '')}")
             if entry.get("corroboration_note"):
                 print(f"  [Battlecard/Single-source] {label}: {entry['corroboration_note']}")
+        if code != 0 and not any(counts.get(tier) for tier in TIER_DISQUALIFYING):
+            # verify_sources exits 1 only for a Broken or Not-on-page prospect.
+            # Without one, it died before finishing: show why.
+            print("verify: FAILED — verify_sources.py did not complete, so no source was checked:")
+            print("\n".join("  " + line for line in verify_output.splitlines()[-15:]))
+            sys.exit(1)
         summary = ", ".join(f"{n} {TIER_LABELS.get(t, t).lower()}" for t, n in sorted(counts.items()))
         print(f"verify: {summary} — handoff written to {handoff}")
         if code != 0:
