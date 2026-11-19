@@ -256,7 +256,10 @@ def fetch_text(url: str, timeout: int) -> tuple[int | None, str]:
                     f"Source is not a text page ({content_type}); its content cannot be checked automatically"
                 )
                 return status, ""
-            raw = body.decode(charset, errors="ignore")
+            try:
+                raw = body.decode(charset, errors="ignore")
+            except LookupError:  # a charset label Python does not know (utf8mb4, none)
+                raw = body.decode("utf-8", errors="ignore")
     except BlockedURL:
         raise
     except urllib.error.HTTPError as exc:

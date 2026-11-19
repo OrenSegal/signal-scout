@@ -609,6 +609,10 @@ class TestUnreadableBodiesAreNotAccused(unittest.TestCase):
             self.assertEqual(tier, TIER_VERIFIED, content_type)
 
 
+    def test_unknown_charset_label_falls_back_to_utf8(self):
+        tier, _ = self.check(self.serve(self.html((self.QUOTE + " ") * 4), "text/html; charset=utf8mb4"))
+        self.assertEqual(tier, TIER_VERIFIED)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
