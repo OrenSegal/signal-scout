@@ -22,6 +22,7 @@ This page states signal-scout's data practices, mostly in terms of what it does 
 
 - One GET per cited `source_url`, with the user agent `Mozilla/5.0 (signal-scout verifier)`, a 10-second default timeout, and at most 2 MB read. Requests run one after another with no delay between them.
 - It does not fetch or honor `robots.txt`.
+- Only text bodies are checked (HTML, plain text, JSON, XML). A PDF or other binary source is tiered Unverified, and so is a claim that is missing from a page that was cut at the 2 MB limit; neither is called Not on page.
 - A `reddit.com` or `www.reddit.com` URL is fetched from `old.reddit.com` instead, because the main site answers script requests with a bot-check page. The URL shown in the report is unchanged.
 - When the live fetch fails (any HTTP error, including 403 and 429) or returns under 200 characters of text (a JavaScript shell, a consent wall, or a paywall stub), it asks the Wayback Machine for the closest snapshot, and if there is none, requests `archive.ph/newest/<url>`. An archived copy can hold text the live site did not serve to the script. The verification note says which copy was checked.
 - If neither archive has the page: a 429, or a 403 from a platform known to block scripts (Reddit, X, LinkedIn, Glassdoor, Indeed), is tiered Snippet-only and never Verified; anything else is Broken source.
