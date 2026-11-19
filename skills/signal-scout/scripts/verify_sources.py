@@ -70,6 +70,7 @@ from signal_scout_core import (
     TIER_LABELS,
     TIER_SNIPPET_ONLY,
     TIER_UNSUPPORTED,
+    TIER_UNVERIFIED,
     opener_grounding_note,
     tier_for_evidence,
 )
@@ -208,9 +209,26 @@ class _TextExtractor(HTMLParser):
         return re.sub(r"\s+", " ", "".join(self._chunks)).strip()
 
 
+# Why a fetched body could not be read as text, keyed by the URL given to
+# fetch_text. check_source reads it so that a body nobody could read is tiered
+# Unverified with the reason, never "Not on page".
+_FETCH_CAVEATS: dict[str, str] = {}
+
+
+def _is_text_type(content_type: str) -> bool:
+    """HTML, plain text, JSON and XML are read; a PDF, image or archive is not."""
+    main, _, sub = content_type.partition("/")
+    return main == "text" or any(part in sub for part in ("html", "xml", "json"))
+
+
 def fetch_text(url: str, timeout: int) -> tuple[int | None, str]:
     """(status, text), or (None, "") if the fetch failed. Raises BlockedURL if
-    the fetch policy refuses the URL, a redirect or a resolved address."""
+    the fetch policy refuses the URL, a redirect or a resolved address.
+
+    A body that is not text (a PDF, an image) comes back as (status, "") with
+    the reason in _FETCH_CAVEATS: decoding it would produce noise that reads
+    as a page without the claim on it."""
+    _FETCH_CAVEATS.pop(url, None)
     request = urllib.request.Request(
         canonicalize_for_fetch(url), headers={"User-Agent": "Mozilla/5.0 (signal-scout verifier)"}
     )
@@ -218,7 +236,17 @@ def fetch_text(url: str, timeout: int) -> tuple[int | None, str]:
         with open_url(request, timeout, POLICY) as response:
             status = response.status
             charset = response.headers.get_content_charset() or "utf-8"
-            raw = response.read(2_000_000).decode(charset, errors="ignore")
+            content_type = response.headers.get_content_type()
+            body = response.read(2_000_000)
+            # Servers mislabel files. A NUL byte never appears in a text page,
+            # except in UTF-16/32, where it is half of every ASCII character.
+            wide = charset.lower().replace("_", "-").startswith(("utf-16", "utf-32", "ucs-"))
+            if not _is_text_type(content_type) or (b"\x00" in body[:4096] and not wide):
+                _FETCH_CAVEATS[url] = (
+                    f"Source is not a text page ({content_type}); its content cannot be checked automatically"
+                )
+                return status, ""
+            raw = body.decode(charset, errors="ignore")
     except BlockedURL:
         raise
     except urllib.error.HTTPError as exc:
@@ -353,7 +381,11 @@ def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float
                 0.0, 0.0)
     if live_failed:
         return TIER_BROKEN, f"Source unreachable (status {status}) and no archived copy found", 0.0, 0.0
-    return tier_for_evidence(evidence, page_text)
+    tier, note, quoted, topical = tier_for_evidence(evidence, page_text)
+    caveat = _FETCH_CAVEATS.get(url)
+    if caveat and tier == TIER_UNVERIFIED:
+        note = caveat
+    return tier, note, quoted, topical
 
 
 def iter_prospects(data: dict[str, Any]):

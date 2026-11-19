@@ -32,7 +32,14 @@ from unittest import mock
 
 import safe_fetch
 import verify_sources
-from signal_scout_core import TIER_BROKEN, TIER_SNIPPET_ONLY, TIER_UNSUPPORTED, TIER_VERIFIED, tier_for_evidence
+from signal_scout_core import (
+    TIER_BROKEN,
+    TIER_SNIPPET_ONLY,
+    TIER_UNSUPPORTED,
+    TIER_UNVERIFIED,
+    TIER_VERIFIED,
+    tier_for_evidence,
+)
 
 DATE_RE = r"^\d{4}-\d{2}-\d{2}$"
 
@@ -524,6 +531,70 @@ class TestVerbatimQuotesAreNotAccused(unittest.TestCase):
     def test_accented_capitalized_word_on_page(self):
         html = "<p>Our team at Caf\u00e9 Roma moved every collection to Bruno last spring.</p>" + self.PAD
         self.assertEqual(self.tier("Our team at Caf\u00e9 Roma moved every collection to Bruno", html), TIER_VERIFIED)
+
+
+class TestUnreadableBodiesAreNotAccused(unittest.TestCase):
+    """"Not on page" says the source was read and the claim is not in it. A
+    body that could not be read as text, or was only partly read, cannot
+    support that: it is Unverified, a fetch problem, not a fabrication."""
+
+    QUOTE = "We migrated from Postman to Bruno last quarter because the pricing change hit our team hard."
+
+    def serve(self, body: bytes, content_type: str) -> str:
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        self.addCleanup(httpd.server_close)
+        self.addCleanup(httpd.shutdown)
+        return f"http://127.0.0.1:{httpd.server_address[1]}/doc"
+
+    def check(self, url: str, evidence: str | None = None) -> tuple[str, str]:
+        policy = safe_fetch.FetchPolicy(allow_private=True)
+        with mock.patch.object(verify_sources, "POLICY", policy), \
+                mock.patch.object(verify_sources, "fetch_wayback", return_value=NO_ARCHIVE), \
+                mock.patch.object(verify_sources, "fetch_archive_ph", return_value=("", "")):
+            tier, note, _, _ = verify_sources.check_source(url, evidence or self.QUOTE, 3)
+        return tier, note
+
+    def html(self, text: str) -> bytes:
+        return f"<html><body><p>{text}</p></body></html>".encode()
+
+    def test_pdf_source_is_unverified_not_accused(self):
+        body = b"%PDF-1.7\n" + bytes(range(256)) * 40 + b" stream endstream obj Lorem Ipsum Dolor " * 30
+        tier, note = self.check(self.serve(body, "application/pdf"))
+        self.assertEqual(tier, TIER_UNVERIFIED)
+        self.assertIn("application/pdf", note)
+
+    def test_binary_body_mislabelled_as_html_is_unverified(self):
+        body = b"%PDF-1.7\n" + bytes(range(256)) * 40
+        tier, _ = self.check(self.serve(body, "text/html"))
+        self.assertEqual(tier, TIER_UNVERIFIED)
+
+    def test_control_claim_absent_from_a_fully_read_page_is_still_not_on_page(self):
+        page = self.html("Bruno is an open source API client that stores collections as plain files on disk. " * 6)
+        tier, _ = self.check(self.serve(page, "text/html"), "Acme raised a $12M Series A led by Sequoia in March.")
+        self.assertEqual(tier, TIER_UNSUPPORTED)
+
+    def test_utf16_page_is_read_despite_its_nul_bytes(self):
+        page = f"<html><body><p>{(self.QUOTE + ' ') * 4}</p></body></html>".encode("utf-16")
+        tier, _ = self.check(self.serve(page, "text/html; charset=utf-16"))
+        self.assertEqual(tier, TIER_VERIFIED)
+
+    def test_json_and_plain_text_sources_are_still_read(self):
+        for content_type in ("application/json", "text/plain; charset=utf-8", "application/xhtml+xml"):
+            tier, _ = self.check(self.serve((self.QUOTE + " ") .encode() * 4, content_type))
+            self.assertEqual(tier, TIER_VERIFIED, content_type)
+
 
 
 if __name__ == "__main__":
