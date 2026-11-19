@@ -61,11 +61,15 @@ def main() -> None:
             print("No outcomes logged yet.")
             return
         print(f"{'DATE':<12} {'TYPE':<10} {'NAME':<24} {'SOURCE':<16} {'BUCKET':<12} {'SCORE':<6} OUTCOME")
+        def cell(row: dict, key: str) -> str:
+            value = row.get(key)
+            return "" if value is None else str(value)  # score is null when logged without --score
+
         for row in rows:
             print(
-                f"{row.get('date', ''):<12} {row.get('type', ''):<10} {str(row.get('name', ''))[:24]:<24} "
-                f"{str(row.get('source_type', ''))[:16]:<16} {str(row.get('query_bucket', ''))[:12]:<12} "
-                f"{row.get('score', ''):<6} {row.get('outcome', '')}"
+                f"{cell(row, 'date'):<12} {cell(row, 'type'):<10} {cell(row, 'name')[:24]:<24} "
+                f"{cell(row, 'source_type')[:16]:<16} {cell(row, 'query_bucket')[:12]:<12} "
+                f"{cell(row, 'score'):<6} {cell(row, 'outcome')}"
             )
         print(f"\n{len(rows)} outcomes logged.")
         return
