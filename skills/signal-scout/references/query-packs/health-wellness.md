@@ -37,7 +37,7 @@ person; treat Individuals as the exception, not the default.
   a gym benefit, a move): individual-level timing triggers when a specific
   poster is identifiable. A diagnosis, medication or treatment is never an
   Individual trigger, even when the poster disclosed it (see
-  [COMPLIANCE.md](../../../../COMPLIANCE.md): no use of health status for
+  [COMPLIANCE.md](https://github.com/OrenSegal/signal-scout/blob/main/COMPLIANCE.md): no use of health status for
   any prospect type)
 - Regulatory or insurance coverage changes affecting the category (creates
   Company-level partnership timing, e.g. a health plan expanding coverage)

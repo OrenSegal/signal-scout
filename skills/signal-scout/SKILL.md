@@ -6,7 +6,7 @@ metadata:
   openclaw:
     homepage: https://github.com/OrenSegal/signal-scout
     requires:
-      bins: [python3, curl]
+      bins: [python3]
 ---
 
 # Signal Scout
