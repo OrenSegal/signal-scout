@@ -234,7 +234,14 @@ def main() -> None:
     input_path = args.input.resolve()
     workdir = input_path.parent
 
-    data = json.loads(input_path.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(input_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"VALIDATION FAILED — {input_path.name} is not valid JSON: {exc}")
+        sys.exit(1)
+    if not isinstance(data, dict):
+        print(f"VALIDATION FAILED — the top level must be a JSON object, got {type(data).__name__}")
+        sys.exit(1)
     no_people = args.no_people or data.get("people") is False
     errors = validate(data)
     if errors:

@@ -274,5 +274,29 @@ class FinalizeReportsAVerifierCrash(unittest.TestCase):
             self.assertFalse((Path(tmp) / "signal-scout-report.html").exists())
 
 
+class FinalizeRejectsInputThatIsNotAReport(unittest.TestCase):
+    def run_on(self, text: str) -> tuple[int, str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "analysis.json"
+            src.write_text(text, encoding="utf-8")
+            out = io.StringIO()
+            with mock.patch.object(sys, "argv", ["finalize.py", str(src), "--validate-only"]), \
+                    contextlib.redirect_stdout(out), self.assertRaises(SystemExit) as raised:
+                finalize.main()
+            return raised.exception.code, out.getvalue()
+
+    def test_top_level_array_is_a_validation_failure(self):
+        code, out = self.run_on("[]")
+        self.assertEqual(code, 1)
+        self.assertIn("VALIDATION FAILED", out)
+        self.assertIn("JSON object", out)
+
+    def test_truncated_json_is_a_validation_failure(self):
+        code, out = self.run_on('{"title": "T", "segments": [')
+        self.assertEqual(code, 1)
+        self.assertIn("VALIDATION FAILED", out)
+        self.assertIn("not valid JSON", out)
+
+
 if __name__ == "__main__":
     unittest.main()
