@@ -230,6 +230,19 @@ class TestUntrustedTextInOutput(unittest.TestCase):
         self.assertNotIn("</script>", script)
         self.assertIn("<\\/script>", script)
 
+    def test_comment_opener_cannot_keep_the_inline_script_open(self):
+        # HTML: after "<!--" then "<script" inside a script, "</script>" stops ending it.
+        payload = "docs say <!--<script> breaks parsers"
+        html_out = generate_report.build_html(
+            {"title": "T", "individuals": [individual("Jane", "https://example.com/a", pain_signal=payload)]}
+        )
+        start = html_out.index("const CSV_DATA")
+        script = html_out[start:html_out.index("const CSV_FILENAME", start)]
+        self.assertNotIn("<!--", script)
+        self.assertIn("<\\!--<script>", script)
+        # The escape is a no-op in a JavaScript string: the CSV still carries the text.
+        self.assertIn(payload, json.loads(script[script.index('"'):script.rindex('"') + 1].replace("<\\!--", "<!--")))
+
     def test_formula_cells_are_neutralised_in_embedded_csv(self):
         rows = generate_report.build_csv(
             [individual('=HYPERLINK("http://evil.example","x")', "https://example.com/a", pain_signal="@SUM(1+1)",

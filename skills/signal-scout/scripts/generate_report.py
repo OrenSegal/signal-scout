@@ -73,8 +73,10 @@ def prose(value: Any) -> str:
 
 def script_json(value: Any) -> str:
     """JSON for an inline <script>: "</" is escaped so a field containing
-    "</script>" cannot end the block."""
-    return json.dumps(value).replace("</", "<\\/")
+    "</script>" cannot end the block, and "<!--" so that "<!--<script" cannot
+    put the HTML parser in the state where the real "</script>" no longer
+    ends it (the script would then swallow the rest of the page and not run)."""
+    return json.dumps(value).replace("</", "<\\/").replace("<!--", "<\\!--")
 
 
 def cc_prompt(label: str, text: str) -> str:
