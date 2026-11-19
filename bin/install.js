@@ -33,6 +33,7 @@ function copyRecursive(src, dest) {
   if (stat.isDirectory()) {
     fs.mkdirSync(dest, { recursive: true });
     for (const entry of fs.readdirSync(src)) {
+      if (entry === "__pycache__") continue; // bytecode from a local test run, not part of the skill
       copyRecursive(path.join(src, entry), path.join(dest, entry));
     }
   } else {
