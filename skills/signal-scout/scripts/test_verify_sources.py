@@ -580,6 +580,19 @@ class TestUnreadableBodiesAreNotAccused(unittest.TestCase):
         tier, _ = self.check(self.serve(body, "text/html"))
         self.assertEqual(tier, TIER_UNVERIFIED)
 
+    def test_quote_past_the_read_limit_is_unverified_not_accused(self):
+        filler = "<p>filler words about nothing relevant at all</p>" * 200
+        with mock.patch.object(verify_sources, "READ_LIMIT", 5_000):
+            tier, note = self.check(self.serve((filler + f"<p>{self.QUOTE}</p>").encode(), "text/html"))
+        self.assertEqual(tier, TIER_UNVERIFIED)
+        self.assertIn("first", note)
+
+    def test_quote_inside_the_read_limit_still_verifies_on_a_cut_page(self):
+        filler = "<p>filler words about nothing relevant at all</p>" * 200
+        with mock.patch.object(verify_sources, "READ_LIMIT", 5_000):
+            tier, _ = self.check(self.serve((f"<p>{self.QUOTE}</p>" + filler).encode(), "text/html"))
+        self.assertEqual(tier, TIER_VERIFIED)
+
     def test_control_claim_absent_from_a_fully_read_page_is_still_not_on_page(self):
         page = self.html("Bruno is an open source API client that stores collections as plain files on disk. " * 6)
         tier, _ = self.check(self.serve(page, "text/html"), "Acme raised a $12M Series A led by Sequoia in March.")

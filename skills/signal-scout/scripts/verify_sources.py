@@ -214,6 +214,12 @@ class _TextExtractor(HTMLParser):
 # Unverified with the reason, never "Not on page".
 _FETCH_CAVEATS: dict[str, str] = {}
 
+# Bytes read from one response. A longer body is cut here, and fetch_text
+# records the URL in _CUT_SHORT: a claim missing from the part that was read
+# may sit in the part that was not.
+READ_LIMIT = 2_000_000
+_CUT_SHORT: set[str] = set()
+
 
 def _is_text_type(content_type: str) -> bool:
     """HTML, plain text, JSON and XML are read; a PDF, image or archive is not."""
@@ -229,6 +235,7 @@ def fetch_text(url: str, timeout: int) -> tuple[int | None, str]:
     the reason in _FETCH_CAVEATS: decoding it would produce noise that reads
     as a page without the claim on it."""
     _FETCH_CAVEATS.pop(url, None)
+    _CUT_SHORT.discard(url)
     request = urllib.request.Request(
         canonicalize_for_fetch(url), headers={"User-Agent": "Mozilla/5.0 (signal-scout verifier)"}
     )
@@ -237,7 +244,10 @@ def fetch_text(url: str, timeout: int) -> tuple[int | None, str]:
             status = response.status
             charset = response.headers.get_content_charset() or "utf-8"
             content_type = response.headers.get_content_type()
-            body = response.read(2_000_000)
+            body = response.read(READ_LIMIT + 1)
+            if len(body) > READ_LIMIT:
+                body = body[:READ_LIMIT]
+                _CUT_SHORT.add(url)
             # Servers mislabel files. A NUL byte never appears in a text page,
             # except in UTF-16/32, where it is half of every ASCII character.
             wide = charset.lower().replace("_", "-").startswith(("utf-16", "utf-32", "ucs-"))
@@ -331,6 +341,25 @@ def fetch_archive_ph(url: str, timeout: int) -> tuple[str, str]:
     return "", ""
 
 
+def _tier_fetched(evidence: str, page_text: str, fetched_url: str) -> tuple[str, str, float, float]:
+    """tier_for_evidence, for text fetch_text returned for `fetched_url`.
+    "Not on page" needs the whole page: when the body was cut at READ_LIMIT and
+    the claim is not in the part that was read, the result is Unverified."""
+    tier, note, quoted, topical = tier_for_evidence(evidence, page_text)
+    if tier == TIER_UNSUPPORTED and fetched_url in _CUT_SHORT:
+        return (
+            TIER_UNVERIFIED,
+            f"Page is larger than the {READ_LIMIT // 1_000_000} MB read limit and the claim is not in the "
+            "first part that was read; check it by hand",
+            quoted,
+            topical,
+        )
+    caveat = _FETCH_CAVEATS.get(fetched_url)
+    if caveat and tier == TIER_UNVERIFIED:
+        note = caveat
+    return tier, note, quoted, topical
+
+
 def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float, float]:
     """Fetch a source (live first, Wayback then archive.ph fallback) and tier its evidence.
 
@@ -353,12 +382,12 @@ def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float
     if live_failed or too_thin:
         snapshot_url, snapshot_date, archive_text = fetch_wayback(url, timeout)
         if archive_text:
-            tier, note, quoted, topical = tier_for_evidence(evidence, archive_text)
+            tier, note, quoted, topical = _tier_fetched(evidence, archive_text, snapshot_url)
             suffix = f" — checked against Wayback archive ({snapshot_date or 'undated'}), live page {'unreachable' if live_failed else 'yielded no text'}"
             return tier, (note + suffix).strip(" —") if not note else note + suffix, quoted, topical
-        _, archive_ph_text = fetch_archive_ph(url, timeout)
+        archive_ph_url, archive_ph_text = fetch_archive_ph(url, timeout)
         if archive_ph_text:
-            tier, note, quoted, topical = tier_for_evidence(evidence, archive_ph_text)
+            tier, note, quoted, topical = _tier_fetched(evidence, archive_ph_text, archive_ph_url)
             suffix = f" — checked against archive.ph copy, live page {'unreachable' if live_failed else 'yielded no text'}"
             return tier, (note + suffix).strip(" —") if not note else note + suffix, quoted, topical
 
@@ -381,11 +410,7 @@ def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float
                 0.0, 0.0)
     if live_failed:
         return TIER_BROKEN, f"Source unreachable (status {status}) and no archived copy found", 0.0, 0.0
-    tier, note, quoted, topical = tier_for_evidence(evidence, page_text)
-    caveat = _FETCH_CAVEATS.get(url)
-    if caveat and tier == TIER_UNVERIFIED:
-        note = caveat
-    return tier, note, quoted, topical
+    return _tier_fetched(evidence, page_text, url)
 
 
 def iter_prospects(data: dict[str, Any]):
