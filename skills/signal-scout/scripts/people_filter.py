@@ -178,6 +178,8 @@ def _text_names(names: list[str]) -> list[str]:
     a URL is matched against the recorded names, not their single tokens."""
     out = set(names)
     for name in names:
+        # "O'Brien" is one surname: without this only "Brien" is redacted and "O'" is left behind.
+        out.update(re.findall(r"[^\W_]+(?:['\u2019\u02bc][^\W_]+)+", name))
         tokens = re.findall(r"[^\W_]+", name)
         if len(tokens) < 2:
             continue

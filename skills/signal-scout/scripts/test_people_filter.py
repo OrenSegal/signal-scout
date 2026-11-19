@@ -590,6 +590,17 @@ class NameMatchingTests(unittest.TestCase):
     def names_for(self, name: str) -> list[str]:
         return collect_person_names({"individuals": [{"name": name}]})
 
+    def test_apostrophe_surname_on_its_own_leaves_no_fragment(self):
+        # "O'Brien" used to come out as "O'[person removed]": the initial survived.
+        names = self.names_for("Siobhan O'Brien (@sobrien_dev)")
+        for text in ("As O'Brien said", "As O\u2019Brien\u2019s team said", "Ms. O'Brien posted", "OBrien posted"):
+            out, count = redact_text(text, names)
+            self.assertNotIn("Brien", out, text)
+            self.assertNotRegex(out, r"O['\u2019]?\[person removed\]", text)
+            self.assertEqual(count, 1, text)
+        out, _ = redact_text("D'Angelo Russell wrote; ask d'Angelo", self.names_for("D'Angelo Russell"))
+        self.assertEqual(out, "[person removed] wrote; ask [person removed]")
+
     def test_base_name_split_on_dashes_and_at(self):
         for raw in ("Jane Doe \u2014 CTO, Acme", "Jane Doe \u2013 CTO", "Jane Doe - CTO", "Jane Doe at Acme"):
             out, _ = redact_text("Thanks to Jane Doe for the thread.", self.names_for(raw))

@@ -7,6 +7,7 @@
 - Fixed: when `verify_sources.py` crashed, `finalize.py` hid its output and told the user to fix or drop prospects that had never been checked. It now prints why the verifier stopped.
 - Fixed: `log_outcome.py --list` crashed when a record had been logged without `--score`.
 - Fixed: the report's inline JSON escaped only `</`, so a field containing `<!--<script` could stop the report's script from running in a browser. `<!--` is now escaped there too.
+- Fixed: no-people mode redacted a surname with an apostrophe only after the apostrophe, so `O'Brien` on its own came out as `O'[person removed]`. The whole surname is now replaced.
 - Fixed: `node bin/install.js`, `./install.sh` and `npm pack` copied `__pycache__` bytecode left by a local test run into the installed skill and the package. They now leave it out.
 - Docs: `evals/README.md` pins litmus to v0.2.0, as CI does; an unpinned install (0.3.0) has no `gate` command.
 - MCP server: a model call that was billed and then failed (output cut off at `max_tokens`, a refusal, invalid JSON, a research loop that did not finish) was not metered, so it did not count toward `SIGNAL_SCOUT_DAILY_CALL_CAP`, the only spend limit. Such calls are now metered. Output cut off at `max_tokens` raises an error that says so, where it used to surface as a JSON parse error.
