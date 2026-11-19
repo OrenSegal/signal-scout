@@ -21,9 +21,11 @@ To add a case, copy an existing case directory, edit `input.json` and `pages.jso
 ## 2. `evals/cases/` + `evals/runs/`: litmus grader check on hand-written outputs
 
 ```bash
-pip install git+https://github.com/OrenSegal/litmus.git
+pip install git+https://github.com/OrenSegal/litmus.git@v0.2.0
 python3 -m litmus.cli gate evals --baseline evals/baseline.json
 ```
+
+The pin matters: litmus 0.3.0 replaced `gate`, `capture`, `run` and `bless` with mutation testing, so an unpinned install has none of the commands on this page. CI installs the same tag.
 
 The files in `evals/runs/` are hand-written examples of what a good run could look like (placeholder names such as "A. Maintainer", placeholder URLs, typed-in cost and token numbers). They were not produced by running the skill. CI grades these same files against `baseline.json` on every push, so this check cannot detect a change in the skill's behavior. What it does catch: a change to the assertions in `evals/cases/`, to `signal-scout.schema.json`, or to litmus itself that flips the verdict on these examples.
 
