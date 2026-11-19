@@ -376,6 +376,10 @@ def check_source(url: str, evidence: str, timeout: int) -> tuple[str, str, float
     A URL the fetch policy refuses is Broken with no archive lookup: that
     would hand an internal address to a third party."""
     try:
+        urlparse(url)
+    except ValueError as exc:  # "http://[foo/bar": passes the http(s) prefix check, cannot be parsed
+        return TIER_BROKEN, f"Invalid source_url ({exc})", 0.0, 0.0
+    try:
         status, page_text = fetch_text(url, timeout)
     except BlockedURL as exc:
         return TIER_BROKEN, f"Refused to fetch: {exc}", 0.0, 0.0

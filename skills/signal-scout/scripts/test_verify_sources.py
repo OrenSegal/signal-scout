@@ -605,13 +605,19 @@ class TestUnreadableBodiesAreNotAccused(unittest.TestCase):
 
     def test_json_and_plain_text_sources_are_still_read(self):
         for content_type in ("application/json", "text/plain; charset=utf-8", "application/xhtml+xml"):
-            tier, _ = self.check(self.serve((self.QUOTE + " ") .encode() * 4, content_type))
+            tier, _ = self.check(self.serve((self.QUOTE + " ").encode() * 4, content_type))
             self.assertEqual(tier, TIER_VERIFIED, content_type)
-
 
     def test_unknown_charset_label_falls_back_to_utf8(self):
         tier, _ = self.check(self.serve(self.html((self.QUOTE + " ") * 4), "text/html; charset=utf8mb4"))
         self.assertEqual(tier, TIER_VERIFIED)
+
+
+class TestMalformedSourceUrl(unittest.TestCase):
+    def test_unparseable_url_is_broken_not_a_crash(self):
+        data = run_verify({"segments": [{"name": "s", "source_url": "http://[foo/bar", "evidence": EVIDENCE}]})
+        self.assertEqual(data["segments"][0]["verification_tier"], TIER_BROKEN)
+        self.assertIn("Invalid source_url", data["segments"][0]["verification_note"])
 
 
 if __name__ == "__main__":
