@@ -99,6 +99,8 @@ These go beyond a single report and are opt-in per product. [`skills/signal-scou
 
 signal-scout runs on your own Claude Code or OpenCode session plus public web search and fetch, not a metered per-contact enrichment API. That is an architectural difference, not a measured one. Nobody has compared total cost against Clay or similar tools, so there's no number here.
 
+**Model.** The search and verification steps work on Opus or Sonnet. The final call (which segment, which ICP, who to pitch first) is an open strategy question. For that step, Fable gives the best result: run `/model fable` before you read the report and choose.
+
 ## Scope
 
 It does not do sending infrastructure at scale, CRM sync, or contact-data enrichment (finding emails or phone numbers). Its job ends at a verified, scored shortlist and a next action.
